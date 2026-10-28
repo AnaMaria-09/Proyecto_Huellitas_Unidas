@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -12,22 +11,29 @@ import {
   Post,
   Put,
   Query,
-  UnauthorizedException,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Roles } from '../autenticacion/decoradores/roles.decorator';
+import { AutenticadoGuard } from '../autenticacion/guards/autenticado.guard';
+import type { RequestConUsuario } from '../autenticacion/guards/autenticado.guard';
+import { RolesGuard } from '../autenticacion/guards/roles.guard';
 import { ActualizarMascotaDto } from './dto/actualizar-mascota.dto';
 import { BuscarMascotasDto } from './dto/buscar-mascotas.dto';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
 import { CreateMascotaDto } from './dto/create-mascota.dto';
 import { MascotasService } from './mascotas.service';
 
-// TODO: la cabecera 'x-fundacion-id' se reemplazará por el id del token JWT cuando el módulo de autenticación esté en main.
+// La fundación se identifica por el 'sub' del JWT.
 @Controller('mascotas')
 export class MascotasController {
   constructor(private readonly mascotasService: MascotasService) {}
 
   @Post()
-  crear(@Headers('x-fundacion-id') fundacionId: string | undefined, @Body() datos: CreateMascotaDto) {
-    return this.mascotasService.crear(this.fundacionDesdeCabecera(fundacionId), datos);
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('fundacion')
+  crear(@Req() req: RequestConUsuario, @Body() datos: CreateMascotaDto) {
+    return this.mascotasService.crear(req.usuario!.sub, datos);
   }
 
   @Get()
@@ -47,29 +53,28 @@ export class MascotasController {
   }
 
   @Patch(':id/estado')
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('fundacion')
   cambiarEstado(@Param('id', ParseIntPipe) id: number, @Body() datos: CambiarEstadoDto) {
     return this.mascotasService.cambiarEstado(id, datos.estado);
   }
 
   @Put(':id')
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('fundacion')
   actualizar(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('x-fundacion-id') fundacionId: string | undefined,
+    @Req() req: RequestConUsuario,
     @Body() datos: ActualizarMascotaDto,
   ) {
-    return this.mascotasService.actualizar(id, this.fundacionDesdeCabecera(fundacionId), datos);
+    return this.mascotasService.actualizar(id, req.usuario!.sub, datos);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  eliminar(@Param('id', ParseIntPipe) id: number, @Headers('x-fundacion-id') fundacionId: string | undefined) {
-    this.mascotasService.eliminar(id, this.fundacionDesdeCabecera(fundacionId));
-  }
-
-  private fundacionDesdeCabecera(fundacionId: string | undefined): number {
-    if (!fundacionId) {
-      throw new UnauthorizedException('Falta la cabecera x-fundacion-id');
-    }
-    return Number(fundacionId);
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('fundacion')
+  eliminar(@Param('id', ParseIntPipe) id: number, @Req() req: RequestConUsuario) {
+    this.mascotasService.eliminar(id, req.usuario!.sub);
   }
 }
