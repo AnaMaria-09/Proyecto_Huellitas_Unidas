@@ -6,7 +6,7 @@ import { AutenticacionController } from './autenticacion/autenticacion.controlle
 import { UsuariosController } from './usuarios/usuarios.controller';
 import { FundacionesController } from './fundaciones/fundaciones.controller';
 import { AdopcionesController } from './adopciones/adopciones.controller';
-import { MascotasController } from './mascotas/mascotas.controller';
+import { MascotasModule } from './mascotas/mascotas.module';
 import { ArchivosController } from './archivos/archivos.controller';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -20,8 +20,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: 'YOUR_APP_SECRET',
       serviceId: 'huellitas-unidas-nestjs',
     }),
+    MascotasModule,
   ],
-  controllers: [AppController, AutenticacionController, UsuariosController, FundacionesController, AdopcionesController, MascotasController, ArchivosController],
+  controllers: [AppController, AutenticacionController, UsuariosController, FundacionesController, AdopcionesController, ArchivosController],
   providers: [AppService],
 })
 export class AppModule {}
