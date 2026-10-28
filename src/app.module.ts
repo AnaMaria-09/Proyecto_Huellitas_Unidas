@@ -3,8 +3,8 @@ import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AutenticacionModule } from './autenticacion/autenticacion.module';
-import { UsuariosController } from './usuarios/usuarios.controller';
-import { FundacionesController } from './fundaciones/fundaciones.controller';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { FundacionesModule } from './fundaciones/fundaciones.module';
 import { AdopcionesController } from './adopciones/adopciones.controller';
 import { MascotasModule } from './mascotas/mascotas.module';
 import { ArchivosController } from './archivos/archivos.controller';
@@ -22,8 +22,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
     MascotasModule,
     AutenticacionModule,
+    UsuariosModule,
+    FundacionesModule,
   ],
-  controllers: [AppController, UsuariosController, FundacionesController, AdopcionesController, ArchivosController],
+  controllers: [AppController, AdopcionesController, ArchivosController],
   providers: [AppService],
 })
 export class AppModule {}

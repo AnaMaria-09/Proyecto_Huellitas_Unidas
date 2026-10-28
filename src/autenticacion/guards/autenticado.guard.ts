@@ -8,24 +8,30 @@ export interface RequestConUsuario extends Request {
   usuario?: PayloadJwt;
 }
 
+export function extraerToken(request: Request): string | undefined {
+  const [tipo, token] = request.headers.authorization?.split(' ') ?? [];
+  return tipo === 'Bearer' && token ? token : undefined;
+}
+
+export async function verificarToken(jwtService: JwtService, token: string): Promise<PayloadJwt> {
+  try {
+    return await jwtService.verifyAsync<PayloadJwt>(token, { secret: obtenerJwtSecreto() });
+  } catch {
+    throw new UnauthorizedException('Token de acceso inválido');
+  }
+}
+
 @Injectable()
 export class AutenticadoGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestConUsuario>();
-    const [tipo, token] = request.headers.authorization?.split(' ') ?? [];
-    if (tipo !== 'Bearer' || !token) {
+    const token = extraerToken(request);
+    if (!token) {
       throw new UnauthorizedException('Token de acceso requerido');
     }
-
-    try {
-      request.usuario = await this.jwtService.verifyAsync<PayloadJwt>(token, {
-        secret: obtenerJwtSecreto(),
-      });
-    } catch {
-      throw new UnauthorizedException('Token de acceso inválido');
-    }
+    request.usuario = await verificarToken(this.jwtService, token);
     return true;
   }
 }
