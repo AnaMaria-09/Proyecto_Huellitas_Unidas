@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    name: Lint, build y pruebas
+    runs-on: ubuntu-latest
+
+    env:
+      # Valor de ejemplo SOLO para la CI. No es un secreto real ni se usa en producción.
+      JWT_SECRET: secreto-de-prueba-para-ci-no-usar-en-produccion
+
+    # TODO: activar cuando la base de datos (TypeORM + PostgreSQL) esté en main.
+    # services:
+    #   postgres:
+    #     image: postgres:16
+    #     env:
+    #       POSTGRES_USER: huellitas
+    #       POSTGRES_PASSWORD: huellitas-ci
+    #       POSTGRES_DB: huellitas_unidas_test
+    #     ports:
+    #       - 5432:5432
+    #     options: >-
+    #       --health-cmd "pg_isready -U huellitas"
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Pruebas unitarias
+        run: npm run test
+
+      # TODO: activar cuando las pruebas e2e y la base de datos estén en main.
+      # - name: Pruebas end-to-end
+      #   run: npm run test:e2e

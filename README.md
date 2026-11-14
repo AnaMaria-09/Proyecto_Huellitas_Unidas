@@ -1,114 +1,255 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Huellitas Unidas
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST para la adopción responsable de animales. Conecta a **fundaciones** que
+publican mascotas en adopción con **ciudadanos** que quieren adoptarlas, y da a los
+**administradores** herramientas para verificar fundaciones y gestionar usuarios.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Los nombres de módulos, rutas, campos y tablas están en español.
 
-## Description
+## Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+| Capa              | Tecnología                                   |
+| ----------------- | -------------------------------------------- |
+| Framework         | NestJS 12                                    |
+| Lenguaje          | TypeScript (modo estricto)                   |
+| Base de datos     | PostgreSQL 16                                |
+| ORM               | TypeORM                                      |
+| Autenticación     | JWT (`@nestjs/jwt`) + bcrypt                 |
+| Validación        | class-validator + class-transformer          |
+| Contenedores      | Docker y Docker Compose                      |
+| Pruebas           | Jest (modo ESM) + Supertest                  |
+| Lint              | oxlint                                       |
 
-## Project setup
+## Arquitectura por módulos
 
-```bash
-$ npm install
-```
+Cada dominio vive en su propio módulo dentro de `src/`:
 
-## Compile and run the project
+| Módulo          | Responsabilidad                                                                   |
+| --------------- | --------------------------------------------------------------------------------- |
+| `autenticacion` | Registro, inicio de sesión, emisión de JWT y guards de autenticación y roles.     |
+| `usuarios`      | Perfil del usuario autenticado y administración de usuarios.                      |
+| `fundaciones`   | Datos de las fundaciones y su verificación por parte de un administrador.         |
+| `mascotas`      | Publicación, búsqueda con filtros y ciclo de vida (estados) de las mascotas.      |
+| `adopciones`    | Solicitudes de adopción: creación, evaluación, entrega y cancelación.             |
+| `archivos`      | Subida, validación y entrega mediante URLs firmadas de fotos y documentos.        |
 
-```bash
-# development
-$ npm run start
+Roles disponibles: `ciudadano`, `fundacion` y `administrador`.
 
-# watch mode
-$ npm run start:dev
+> Estado actual: `adopciones` y `archivos` tienen por ahora solo sus reglas de
+> dominio y piezas base; sus endpoints llegarán cuando la base de datos esté
+> integrada.
 
-# production mode
-$ npm run start:prod
-```
+## Requisitos
 
-## Run tests
+- Node.js 22 o superior y npm.
+- Docker y Docker Compose (para levantar la API junto con PostgreSQL).
 
-```bash
-# unit tests
-$ npm run test
+## Ejecución rápida (versión actual)
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Hoy la API funciona con almacenamiento en memoria, así que basta con Node:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# 1. Clonar e instalar dependencias
+git clone https://github.com/AnaMaria-09/Proyecto_Huellitas_Unidas.git
+cd Proyecto_Huellitas_Unidas
+npm install
+
+# 2. Definir JWT_SECRET (un texto aleatorio de 32 caracteres o más)
+export JWT_SECRET="<tu-secreto-de-32-caracteres-o-mas>"          # Linux / macOS / Git Bash
+# $env:JWT_SECRET = "<tu-secreto-de-32-caracteres-o-mas>"        # PowerShell
+
+# 3. Compilar y ejecutar
+npm run start          # desarrollo
+npm run start:dev      # modo observación (recarga al guardar)
+npm run start:prod     # producción (requiere npm run build antes)
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+La API queda en `http://localhost:3000`. Prueba rápida:
 
-## Observability
+```bash
+curl -X POST http://localhost:3000/autenticacion/registro \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Ana","email":"ana@example.com","password":"clave-segura-123","rol":"ciudadano"}'
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+Como los datos están en memoria, se pierden al reiniciar la API. Por ahora el
+archivo `.env` no se carga automáticamente: eso llegará con `@nestjs/config`.
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+## Cómo levantar el proyecto con base de datos
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+### Con Docker (recomendado)
 
-## Resources
+```bash
+cp .env.example .env      # completa los valores
+docker compose up --build
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+La API queda en `http://localhost:3000` y PostgreSQL en el puerto definido en `.env`.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Sin Docker
 
-## Support
+Necesitas una instancia de PostgreSQL accesible con los datos de `.env`.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+npm install
+cp .env.example .env      # completa los valores
+npm run migration:run     # crea las tablas
+npm run start:dev         # modo desarrollo con recarga
+```
 
-## Stay in touch
+> La configuración de base de datos, `docker-compose.yml`, `.env.example` y las
+> migraciones se están integrando; hasta entonces la API arranca con
+> almacenamiento en memoria usando solo `npm install` y `npm run start:dev`.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Variables de entorno
 
-## License
+| Variable                      | Obligatoria | Descripción                                                        | Ejemplo                  |
+| ----------------------------- | ----------- | ------------------------------------------------------------------ | ------------------------ |
+| `PORT`                        | No          | Puerto HTTP de la API (por defecto `3000`).                        | `3000`                   |
+| `JWT_SECRET`                  | Sí          | Secreto para firmar los JWT. Mínimo 32 caracteres.                 | `cambia-este-secreto...` |
+| `DB_HOST`                     | Sí          | Host de PostgreSQL.                                                | `localhost`              |
+| `DB_PORT`                     | Sí          | Puerto de PostgreSQL.                                              | `5432`                   |
+| `DB_USERNAME`                 | Sí          | Usuario de PostgreSQL.                                             | `huellitas`              |
+| `DB_PASSWORD`                 | Sí          | Contraseña de PostgreSQL.                                          | `********`               |
+| `DB_NAME`                     | Sí          | Nombre de la base de datos.                                        | `huellitas_unidas`       |
+| `ALMACENAMIENTO_DIR`          | No          | Directorio donde se guardan los archivos subidos.                  | `uploads`                |
+| `URL_FIRMADA_SECRETO`         | Sí          | Secreto HMAC para firmar URLs de archivos. Mínimo 32 caracteres.   | `otro-secreto-largo...`  |
+| `URL_FIRMADA_EXPIRA_SEGUNDOS` | No          | Vigencia de una URL firmada en segundos.                           | `300`                    |
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Nunca subas el archivo `.env` al repositorio: está en `.gitignore`. Los nombres
+exactos de las variables de base de datos se confirmarán cuando la configuración
+esté en `main`.
+
+## Scripts de npm
+
+| Script                  | Qué hace                                                   |
+| ----------------------- | ---------------------------------------------------------- |
+| `npm run start`         | Arranca la API.                                            |
+| `npm run start:dev`     | Arranca en modo desarrollo con recarga automática.         |
+| `npm run start:debug`   | Arranca con el inspector de Node activo.                   |
+| `npm run start:prod`    | Ejecuta la versión compilada (`dist/main`).                |
+| `npm run build`         | Compila el proyecto a `dist/`.                             |
+| `npm run lint`          | Revisa el código con oxlint.                               |
+| `npm run format`        | Formatea el código con Prettier.                           |
+| `npm run test`          | Ejecuta las pruebas unitarias.                             |
+| `npm run test:watch`    | Ejecuta las pruebas en modo observación.                   |
+| `npm run test:cov`      | Ejecuta las pruebas con reporte de cobertura.              |
+| `npm run test:e2e`      | Ejecuta las pruebas end-to-end.                            |
+| `npm run migration:run` | Aplica las migraciones de TypeORM (cuando estén en `main`). |
+
+## Pruebas
+
+```bash
+npm run test        # pruebas unitarias (*.spec.ts)
+npm run test:cov    # con cobertura en ./coverage
+npm run test:e2e    # pruebas end-to-end (requieren base de datos)
+```
+
+Usa siempre los scripts de npm y no `npx jest`: el script activa el modo ESM de
+Node (`--experimental-vm-modules`), que Nest 12 necesita.
+
+## Documentación de la API (Swagger)
+
+Cuando Swagger esté integrado, la documentación interactiva estará en
+`http://localhost:3000/api/docs`.
+
+## Resumen de endpoints
+
+Todas las rutas se publicarán bajo el prefijo `/api/v1` (planeado; hoy se sirven
+sin prefijo). 🔒 = requiere JWT en `Authorization: Bearer <token>`.
+
+### autenticacion
+
+| Método | Ruta                             | Acceso  | Descripción                           |
+| ------ | -------------------------------- | ------- | ------------------------------------- |
+| POST   | `/autenticacion/registro`        | Público | Registra un ciudadano o una fundación. |
+| POST   | `/autenticacion/iniciar_sesion`  | Público | Devuelve un JWT.                      |
+
+### usuarios
+
+| Método | Ruta                    | Acceso                       | Descripción                    |
+| ------ | ----------------------- | ---------------------------- | ------------------------------ |
+| GET    | `/usuarios/perfil`      | 🔒 Cualquier rol             | Perfil del usuario autenticado. |
+| PATCH  | `/usuarios/perfil`      | 🔒 Cualquier rol             | Actualiza el propio perfil.    |
+| GET    | `/usuarios`             | 🔒 administrador             | Lista los usuarios.            |
+| GET    | `/usuarios/:id`         | 🔒 administrador o el mismo  | Detalle de un usuario.         |
+| PATCH  | `/usuarios/:id/estado`  | 🔒 administrador             | Activa o inactiva un usuario.  |
+
+### fundaciones
+
+| Método | Ruta                            | Acceso                                  | Descripción                          |
+| ------ | ------------------------------- | --------------------------------------- | ------------------------------------ |
+| GET    | `/fundaciones`                  | Público                                 | Lista las fundaciones verificadas.   |
+| GET    | `/fundaciones/:id`              | Público si está verificada              | Detalle de una fundación.            |
+| PATCH  | `/fundaciones/mi_fundacion`     | 🔒 fundacion                            | Actualiza los datos de la fundación. |
+| PATCH  | `/fundaciones/:id/verificacion` | 🔒 administrador                        | Verifica o retira la verificación.   |
+
+### mascotas
+
+| Método | Ruta                    | Acceso       | Descripción                                     |
+| ------ | ----------------------- | ------------ | ----------------------------------------------- |
+| GET    | `/mascotas`             | Público      | Lista las mascotas disponibles.                 |
+| GET    | `/mascotas/buscar`      | Público      | Búsqueda con filtros (especie, tamaño, ciudad…). |
+| GET    | `/mascotas/:id`         | Público      | Detalle de una mascota.                         |
+| POST   | `/mascotas`             | 🔒 fundacion | Publica una mascota.                            |
+| PUT    | `/mascotas/:id`         | 🔒 fundacion | Actualiza una mascota propia.                   |
+| PATCH  | `/mascotas/:id/estado`  | 🔒 fundacion | Cambia el estado según las transiciones válidas. |
+| DELETE | `/mascotas/:id`         | 🔒 fundacion | Elimina una mascota propia disponible.          |
+
+### adopciones (planeado)
+
+| Método | Ruta                                    | Acceso       | Descripción                                   |
+| ------ | --------------------------------------- | ------------ | --------------------------------------------- |
+| POST   | `/adopciones/solicitudes`               | 🔒 ciudadano | Crea una solicitud de adopción.               |
+| GET    | `/adopciones/solicitudes`               | 🔒 ciudadano / fundacion | Lista las solicitudes propias, con filtro por estado. |
+| GET    | `/adopciones/solicitudes/:id`           | 🔒 participantes | Detalle de una solicitud.                 |
+| PATCH  | `/adopciones/solicitudes/:id/evaluacion`| 🔒 fundacion | Aprueba o rechaza (con motivo).               |
+| PATCH  | `/adopciones/solicitudes/:id/entrega`   | 🔒 fundacion | Confirma la entrega de la mascota.            |
+| PATCH  | `/adopciones/solicitudes/:id/cancelacion` | 🔒 ciudadano / fundacion | Cancela una solicitud activa.     |
+
+### archivos (planeado)
+
+| Método | Ruta                         | Acceso                  | Descripción                                      |
+| ------ | ---------------------------- | ----------------------- | ------------------------------------------------ |
+| POST   | `/archivos`                  | 🔒 Cualquier rol        | Sube una imagen (máx. 5 MB) o un PDF (máx. 10 MB). |
+| GET    | `/archivos/:id/url_firmada`  | 🔒 Dueño o autorizado   | Genera una URL temporal firmada.                 |
+| GET    | `/archivos/:id`              | Con firma válida        | Descarga el archivo (`?expira=…&firma=…`).       |
+| DELETE | `/archivos/:id`              | 🔒 Dueño                | Elimina el archivo.                              |
+
+## Convenciones
+
+Revisa [CONVENTIONS.md](CONVENTIONS.md) antes de abrir un PR.
+
+## Despliegue
+
+Antes de desplegar en producción revisa la
+[documentación de despliegue de NestJS](https://docs.nestjs.com/deployment).
+El proyecto incluye `@nestjs/mau`, la plataforma oficial de Nest para desplegar
+en AWS:
+
+```bash
+npm install -g @nestjs/mau
+mau deploy
+```
+
+## Observabilidad
+
+La API ya incluye [NestJS Observe](https://observe.nestjs.com) (`@nestjs/observe`)
+en `app.module.ts`: trazas distribuidas, logs correlacionados, métricas de
+peticiones, seguimiento de errores y alertas. Para activarlo se necesitan las
+credenciales de la aplicación (`OBSERVE_APP_KEY` y `OBSERVE_APP_SECRET`), que
+deben llegar por variables de entorno y nunca escribirse en el código.
+
+## Recursos
+
+- [Documentación de NestJS](https://docs.nestjs.com)
+- [Canal de Discord de NestJS](https://discord.gg/G7Qnnhy)
+- [Cursos oficiales de NestJS](https://courses.nestjs.com/)
+- [NestJS Devtools](https://devtools.nestjs.com) para visualizar el grafo de la aplicación
+- [Documentación de TypeORM](https://typeorm.io)
+- [Documentación de class-validator](https://github.com/typestack/class-validator)
+
+## Licencia
+
+Proyecto académico privado (`UNLICENSED`). NestJS se distribuye bajo
+[licencia MIT](https://github.com/nestjs/nest/blob/master/LICENSE).
