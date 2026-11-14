@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { ContrasenasService } from './contrasenas.service';
@@ -37,6 +37,10 @@ export class AutenticacionService {
       : false;
     if (!usuario || !passwordValida) {
       throw new UnauthorizedException(CREDENCIALES_INVALIDAS);
+    }
+    // Se revisa después de la contraseña para no revelar el estado de la cuenta a quien no la conoce.
+    if (usuario.estado === 'inactivo') {
+      throw new ForbiddenException('La cuenta está desactivada');
     }
 
     const payload: PayloadJwt = { sub: usuario.id, rol: usuario.rol, email: usuario.email };
