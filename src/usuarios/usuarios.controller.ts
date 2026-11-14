@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioActual } from '../autenticacion/decoradores/usuario-actual.decorator';
 import { AutenticadoGuard } from '../autenticacion/guards/autenticado.guard';
 import { RolesGuard } from '../autenticacion/guards/roles.guard';
 import type { PayloadJwt } from '../autenticacion/usuario.model';
+import { PaginacionDto } from '../common/dto/paginacion.dto';
 import { ActualizarPerfilDto } from './dto/actualizar-perfil.dto';
 import { CambiarEstadoUsuarioDto } from './dto/cambiar-estado-usuario.dto';
 import { UsuariosService } from './usuarios.service';
@@ -25,11 +26,11 @@ export class UsuariosController {
     return this.usuariosService.actualizarPerfil(usuario.sub, datos);
   }
 
-  // GET /usuarios
+  // GET /usuarios?pagina=&limite=
   @Get()
   @Roles('administrador')
-  listar() {
-    return this.usuariosService.listar();
+  listar(@Query() paginacion: PaginacionDto) {
+    return this.usuariosService.listar(paginacion);
   }
 
   // GET /usuarios/:id (administrador o el mismo usuario)

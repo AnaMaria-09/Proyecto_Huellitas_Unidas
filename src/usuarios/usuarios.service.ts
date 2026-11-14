@@ -3,58 +3,57 @@ import {
   EstadoUsuario,
   PayloadJwt,
   sinPasswordHash,
-  Usuario,
   UsuarioPublico,
 } from '../autenticacion/usuario.model';
+import { PaginacionDto } from '../common/dto/paginacion.dto';
+import { opcionesPagina, Paginado, paginado } from '../common/paginacion';
 import { ActualizarPerfilDto } from './dto/actualizar-perfil.dto';
+import { Usuario } from './entities/usuario.entity';
 import { UsuariosRepositorio } from './usuarios.repositorio';
 
 @Injectable()
 export class UsuariosService {
   constructor(private readonly usuariosRepositorio: UsuariosRepositorio) {}
 
-  obtenerPerfil(usuarioId: number): UsuarioPublico {
-    return sinPasswordHash(this.buscarOFallar(usuarioId));
+  async obtenerPerfil(usuarioId: number): Promise<UsuarioPublico> {
+    return sinPasswordHash(await this.buscarOFallar(usuarioId));
   }
 
-  actualizarPerfil(usuarioId: number, datos: ActualizarPerfilDto): UsuarioPublico {
-    const usuario = this.buscarOFallar(usuarioId);
+  async actualizarPerfil(usuarioId: number, datos: ActualizarPerfilDto): Promise<UsuarioPublico> {
+    const usuario = await this.buscarOFallar(usuarioId);
     const email = datos.email?.toLowerCase();
     if (email && email !== usuario.email) {
-      const existente = this.usuariosRepositorio.buscarPorEmail(email);
+      const existente = await this.usuariosRepositorio.buscarPorEmail(email);
       if (existente && existente.id !== usuario.id) {
         throw new ConflictException('El email ya está registrado');
       }
     }
 
-    const actualizado: Usuario = {
-      ...usuario,
-      nombre: datos.nombre ?? usuario.nombre,
-      email: email ?? usuario.email,
-    };
-    this.usuariosRepositorio.actualizar(actualizado);
-    return sinPasswordHash(actualizado);
+    usuario.nombre = datos.nombre ?? usuario.nombre;
+    usuario.email = email ?? usuario.email;
+    return sinPasswordHash(await this.usuariosRepositorio.actualizar(usuario));
   }
 
-  listar(): UsuarioPublico[] {
-    return this.usuariosRepositorio.listar().map(sinPasswordHash);
+  async listar(paginacion: PaginacionDto): Promise<Paginado<UsuarioPublico>> {
+    const [usuarios, total] = await this.usuariosRepositorio.listar(opcionesPagina(paginacion));
+    return paginado([usuarios.map(sinPasswordHash), total], paginacion);
   }
 
-  obtenerPorId(id: number, solicitante: PayloadJwt): UsuarioPublico {
+  async obtenerPorId(id: number, solicitante: PayloadJwt): Promise<UsuarioPublico> {
     if (solicitante.rol !== 'administrador' && solicitante.sub !== id) {
       throw new ForbiddenException('No tienes permisos para ver este usuario');
     }
-    return sinPasswordHash(this.buscarOFallar(id));
+    return sinPasswordHash(await this.buscarOFallar(id));
   }
 
-  cambiarEstado(id: number, estado: EstadoUsuario): UsuarioPublico {
-    const actualizado: Usuario = { ...this.buscarOFallar(id), estado };
-    this.usuariosRepositorio.actualizar(actualizado);
-    return sinPasswordHash(actualizado);
+  async cambiarEstado(id: number, estado: EstadoUsuario): Promise<UsuarioPublico> {
+    const usuario = await this.buscarOFallar(id);
+    usuario.estado = estado;
+    return sinPasswordHash(await this.usuariosRepositorio.actualizar(usuario));
   }
 
-  private buscarOFallar(id: number): Usuario {
-    const usuario = this.usuariosRepositorio.buscarPorId(id);
+  private async buscarOFallar(id: number): Promise<Usuario> {
+    const usuario = await this.usuariosRepositorio.buscarPorId(id);
     if (!usuario) {
       throw new NotFoundException(`Usuario ${id} no encontrado`);
     }

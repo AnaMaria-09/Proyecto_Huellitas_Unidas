@@ -8,7 +8,12 @@ export interface Paginado<T> {
 }
 
 // Opciones skip/take de TypeORM para una página.
-export function opcionesPagina({ pagina, limite }: PaginacionDto): { skip: number; take: number } {
+export interface OpcionesPagina {
+  skip: number;
+  take: number;
+}
+
+export function opcionesPagina({ pagina, limite }: PaginacionDto): OpcionesPagina {
   return { skip: (pagina - 1) * limite, take: limite };
 }
 

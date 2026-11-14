@@ -5,6 +5,7 @@ import type { VariablesEntorno } from '../config/env.model';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { AutenticacionController } from './autenticacion.controller';
 import { AutenticacionService } from './autenticacion.service';
+import { ContrasenasService } from './contrasenas.service';
 import { AutenticacionOpcionalGuard } from './guards/autenticacion-opcional.guard';
 import { AutenticadoGuard } from './guards/autenticado.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -22,9 +23,9 @@ import { RolesGuard } from './guards/roles.guard';
     forwardRef(() => UsuariosModule),
   ],
   controllers: [AutenticacionController],
-  providers: [AutenticacionService, AutenticadoGuard, AutenticacionOpcionalGuard, RolesGuard],
+  providers: [AutenticacionService, ContrasenasService, AutenticadoGuard, AutenticacionOpcionalGuard, RolesGuard],
   // JwtModule se exporta porque Nest instancia los guards en el módulo que los usa,
   // y AutenticadoGuard necesita JwtService allí.
-  exports: [JwtModule, AutenticacionService, AutenticadoGuard, AutenticacionOpcionalGuard, RolesGuard],
+  exports: [JwtModule, AutenticacionService, ContrasenasService, AutenticadoGuard, AutenticacionOpcionalGuard, RolesGuard],
 })
 export class AutenticacionModule {}
