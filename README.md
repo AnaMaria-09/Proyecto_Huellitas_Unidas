@@ -38,3 +38,34 @@ Roles disponibles: `ciudadano`, `fundacion` y `administrador`.
 > Estado actual: `adopciones` y `archivos` tienen por ahora solo sus reglas de
 > dominio y piezas base; sus endpoints llegarán cuando la base de datos esté
 > integrada.
+
+## Requisitos
+
+- Node.js 22 o superior y npm.
+- Docker y Docker Compose (para levantar la API junto con PostgreSQL).
+
+## Cómo levantar el proyecto
+
+### Con Docker (recomendado)
+
+```bash
+cp .env.example .env      # completa los valores
+docker compose up --build
+```
+
+La API queda en `http://localhost:3000` y PostgreSQL en el puerto definido en `.env`.
+
+### Sin Docker
+
+Necesitas una instancia de PostgreSQL accesible con los datos de `.env`.
+
+```bash
+npm install
+cp .env.example .env      # completa los valores
+npm run migration:run     # crea las tablas
+npm run start:dev         # modo desarrollo con recarga
+```
+
+> La configuración de base de datos, `docker-compose.yml`, `.env.example` y las
+> migraciones se están integrando; hasta entonces la API arranca con
+> almacenamiento en memoria usando solo `npm install` y `npm run start:dev`.
