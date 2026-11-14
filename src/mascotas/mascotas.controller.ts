@@ -48,6 +48,14 @@ export class MascotasController {
     return this.mascotasService.buscar(filtros);
   }
 
+  // GET /mascotas/mis_mascotas: también antes de GET /:id.
+  @Get('mis_mascotas')
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('fundacion')
+  obtenerMisMascotas(@UsuarioActual() usuario: PayloadJwt, @Query() paginacion: PaginacionDto) {
+    return this.mascotasService.obtenerDeFundacion(usuario.sub, paginacion);
+  }
+
   @Get(':id')
   obtenerPorId(@Param('id', ParseIntPipe) id: number) {
     return this.mascotasService.obtenerPorId(id);

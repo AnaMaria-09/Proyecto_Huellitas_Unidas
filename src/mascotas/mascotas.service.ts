@@ -55,6 +55,11 @@ export class MascotasService {
     return this.listar({ estado: 'disponible' }, paginacion);
   }
 
+  // Todas las mascotas de la fundación, en cualquier estado.
+  async obtenerDeFundacion(fundacionId: number, paginacion: PaginacionDto): Promise<Paginado<Mascota>> {
+    return this.listar({ fundacionId }, paginacion);
+  }
+
   async obtenerPorId(id: number): Promise<Mascota> {
     const mascota = await this.mascotas.findOneBy({ id });
     if (!mascota) {

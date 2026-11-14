@@ -169,6 +169,16 @@ describe('MascotasService', () => {
     });
   });
 
+  it('obtenerDeFundacion consulta todas las mascotas de la fundación, sin filtrar por estado', async () => {
+    await service.obtenerDeFundacion(FUNDACION_ID, { pagina: 2, limite: 5 });
+    expect(repositorio.findAndCount).toHaveBeenCalledWith({
+      where: { fundacionId: FUNDACION_ID },
+      order: { id: 'ASC' },
+      skip: 5,
+      take: 5,
+    });
+  });
+
   describe('actualizar', () => {
     it('lanza Forbidden si la fundación no es la dueña', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
