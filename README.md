@@ -44,7 +44,38 @@ Roles disponibles: `ciudadano`, `fundacion` y `administrador`.
 - Node.js 22 o superior y npm.
 - Docker y Docker Compose (para levantar la API junto con PostgreSQL).
 
-## Cómo levantar el proyecto
+## Ejecución rápida (versión actual)
+
+Hoy la API funciona con almacenamiento en memoria, así que basta con Node:
+
+```bash
+# 1. Clonar e instalar dependencias
+git clone https://github.com/AnaMaria-09/Proyecto_Huellitas_Unidas.git
+cd Proyecto_Huellitas_Unidas
+npm install
+
+# 2. Definir JWT_SECRET (un texto aleatorio de 32 caracteres o más)
+export JWT_SECRET="<tu-secreto-de-32-caracteres-o-mas>"          # Linux / macOS / Git Bash
+# $env:JWT_SECRET = "<tu-secreto-de-32-caracteres-o-mas>"        # PowerShell
+
+# 3. Compilar y ejecutar
+npm run start          # desarrollo
+npm run start:dev      # modo observación (recarga al guardar)
+npm run start:prod     # producción (requiere npm run build antes)
+```
+
+La API queda en `http://localhost:3000`. Prueba rápida:
+
+```bash
+curl -X POST http://localhost:3000/autenticacion/registro \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Ana","email":"ana@example.com","password":"clave-segura-123","rol":"ciudadano"}'
+```
+
+Como los datos están en memoria, se pierden al reiniciar la API. Por ahora el
+archivo `.env` no se carga automáticamente: eso llegará con `@nestjs/config`.
+
+## Cómo levantar el proyecto con base de datos
 
 ### Con Docker (recomendado)
 
