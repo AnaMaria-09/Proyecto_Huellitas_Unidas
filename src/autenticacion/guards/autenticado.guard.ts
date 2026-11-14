@@ -1,7 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { obtenerJwtSecreto } from '../jwt-secreto';
 import { PayloadJwt } from '../usuario.model';
 
 export interface RequestConUsuario extends Request {
@@ -15,7 +14,7 @@ export function extraerToken(request: Request): string | undefined {
 
 export async function verificarToken(jwtService: JwtService, token: string): Promise<PayloadJwt> {
   try {
-    return await jwtService.verifyAsync<PayloadJwt>(token, { secret: obtenerJwtSecreto() });
+    return await jwtService.verifyAsync<PayloadJwt>(token);
   } catch {
     throw new UnauthorizedException('Token de acceso inválido');
   }
