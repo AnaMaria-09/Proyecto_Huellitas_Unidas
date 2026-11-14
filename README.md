@@ -88,3 +88,31 @@ npm run start:dev         # modo desarrollo con recarga
 Nunca subas el archivo `.env` al repositorio: está en `.gitignore`. Los nombres
 exactos de las variables de base de datos se confirmarán cuando la configuración
 esté en `main`.
+
+## Scripts de npm
+
+| Script                  | Qué hace                                                   |
+| ----------------------- | ---------------------------------------------------------- |
+| `npm run start`         | Arranca la API.                                            |
+| `npm run start:dev`     | Arranca en modo desarrollo con recarga automática.         |
+| `npm run start:debug`   | Arranca con el inspector de Node activo.                   |
+| `npm run start:prod`    | Ejecuta la versión compilada (`dist/main`).                |
+| `npm run build`         | Compila el proyecto a `dist/`.                             |
+| `npm run lint`          | Revisa el código con oxlint.                               |
+| `npm run format`        | Formatea el código con Prettier.                           |
+| `npm run test`          | Ejecuta las pruebas unitarias.                             |
+| `npm run test:watch`    | Ejecuta las pruebas en modo observación.                   |
+| `npm run test:cov`      | Ejecuta las pruebas con reporte de cobertura.              |
+| `npm run test:e2e`      | Ejecuta las pruebas end-to-end.                            |
+| `npm run migration:run` | Aplica las migraciones de TypeORM (cuando estén en `main`). |
+
+## Pruebas
+
+```bash
+npm run test        # pruebas unitarias (*.spec.ts)
+npm run test:cov    # con cobertura en ./coverage
+npm run test:e2e    # pruebas end-to-end (requieren base de datos)
+```
+
+Usa siempre los scripts de npm y no `npx jest`: el script activa el modo ESM de
+Node (`--experimental-vm-modules`), que Nest 12 necesita.
