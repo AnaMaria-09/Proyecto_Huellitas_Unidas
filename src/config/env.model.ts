@@ -16,4 +16,7 @@ export interface VariablesEntorno {
 
   OBSERVE_APP_KEY?: string;
   OBSERVE_APP_SECRET?: string;
+
+  ADMIN_EMAIL?: string;
+  ADMIN_PASSWORD?: string;
 }
