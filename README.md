@@ -116,3 +116,75 @@ npm run test:e2e    # pruebas end-to-end (requieren base de datos)
 
 Usa siempre los scripts de npm y no `npx jest`: el script activa el modo ESM de
 Node (`--experimental-vm-modules`), que Nest 12 necesita.
+
+## Documentación de la API (Swagger)
+
+Cuando Swagger esté integrado, la documentación interactiva estará en
+`http://localhost:3000/api/docs`.
+
+## Resumen de endpoints
+
+Todas las rutas se publicarán bajo el prefijo `/api/v1` (planeado; hoy se sirven
+sin prefijo). 🔒 = requiere JWT en `Authorization: Bearer <token>`.
+
+### autenticacion
+
+| Método | Ruta                             | Acceso  | Descripción                           |
+| ------ | -------------------------------- | ------- | ------------------------------------- |
+| POST   | `/autenticacion/registro`        | Público | Registra un ciudadano o una fundación. |
+| POST   | `/autenticacion/iniciar_sesion`  | Público | Devuelve un JWT.                      |
+
+### usuarios
+
+| Método | Ruta                    | Acceso                       | Descripción                    |
+| ------ | ----------------------- | ---------------------------- | ------------------------------ |
+| GET    | `/usuarios/perfil`      | 🔒 Cualquier rol             | Perfil del usuario autenticado. |
+| PATCH  | `/usuarios/perfil`      | 🔒 Cualquier rol             | Actualiza el propio perfil.    |
+| GET    | `/usuarios`             | 🔒 administrador             | Lista los usuarios.            |
+| GET    | `/usuarios/:id`         | 🔒 administrador o el mismo  | Detalle de un usuario.         |
+| PATCH  | `/usuarios/:id/estado`  | 🔒 administrador             | Activa o inactiva un usuario.  |
+
+### fundaciones
+
+| Método | Ruta                            | Acceso                                  | Descripción                          |
+| ------ | ------------------------------- | --------------------------------------- | ------------------------------------ |
+| GET    | `/fundaciones`                  | Público                                 | Lista las fundaciones verificadas.   |
+| GET    | `/fundaciones/:id`              | Público si está verificada              | Detalle de una fundación.            |
+| PATCH  | `/fundaciones/mi_fundacion`     | 🔒 fundacion                            | Actualiza los datos de la fundación. |
+| PATCH  | `/fundaciones/:id/verificacion` | 🔒 administrador                        | Verifica o retira la verificación.   |
+
+### mascotas
+
+| Método | Ruta                    | Acceso       | Descripción                                     |
+| ------ | ----------------------- | ------------ | ----------------------------------------------- |
+| GET    | `/mascotas`             | Público      | Lista las mascotas disponibles.                 |
+| GET    | `/mascotas/buscar`      | Público      | Búsqueda con filtros (especie, tamaño, ciudad…). |
+| GET    | `/mascotas/:id`         | Público      | Detalle de una mascota.                         |
+| POST   | `/mascotas`             | 🔒 fundacion | Publica una mascota.                            |
+| PUT    | `/mascotas/:id`         | 🔒 fundacion | Actualiza una mascota propia.                   |
+| PATCH  | `/mascotas/:id/estado`  | 🔒 fundacion | Cambia el estado según las transiciones válidas. |
+| DELETE | `/mascotas/:id`         | 🔒 fundacion | Elimina una mascota propia disponible.          |
+
+### adopciones (planeado)
+
+| Método | Ruta                                    | Acceso       | Descripción                                   |
+| ------ | --------------------------------------- | ------------ | --------------------------------------------- |
+| POST   | `/adopciones/solicitudes`               | 🔒 ciudadano | Crea una solicitud de adopción.               |
+| GET    | `/adopciones/solicitudes`               | 🔒 ciudadano / fundacion | Lista las solicitudes propias, con filtro por estado. |
+| GET    | `/adopciones/solicitudes/:id`           | 🔒 participantes | Detalle de una solicitud.                 |
+| PATCH  | `/adopciones/solicitudes/:id/evaluacion`| 🔒 fundacion | Aprueba o rechaza (con motivo).               |
+| PATCH  | `/adopciones/solicitudes/:id/entrega`   | 🔒 fundacion | Confirma la entrega de la mascota.            |
+| PATCH  | `/adopciones/solicitudes/:id/cancelacion` | 🔒 ciudadano / fundacion | Cancela una solicitud activa.     |
+
+### archivos (planeado)
+
+| Método | Ruta                         | Acceso                  | Descripción                                      |
+| ------ | ---------------------------- | ----------------------- | ------------------------------------------------ |
+| POST   | `/archivos`                  | 🔒 Cualquier rol        | Sube una imagen (máx. 5 MB) o un PDF (máx. 10 MB). |
+| GET    | `/archivos/:id/url_firmada`  | 🔒 Dueño o autorizado   | Genera una URL temporal firmada.                 |
+| GET    | `/archivos/:id`              | Con firma válida        | Descarga el archivo (`?expira=…&firma=…`).       |
+| DELETE | `/archivos/:id`              | 🔒 Dueño                | Elimina el archivo.                              |
+
+## Convenciones
+
+Revisa [CONVENTIONS.md](CONVENTIONS.md) antes de abrir un PR.
