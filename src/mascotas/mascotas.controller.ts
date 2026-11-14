@@ -56,8 +56,12 @@ export class MascotasController {
   @Patch(':id/estado')
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
-  cambiarEstado(@Param('id', ParseIntPipe) id: number, @Body() datos: CambiarEstadoDto) {
-    return this.mascotasService.cambiarEstado(id, datos.estado);
+  cambiarEstado(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() usuario: PayloadJwt,
+    @Body() datos: CambiarEstadoDto,
+  ) {
+    return this.mascotasService.cambiarEstado(id, usuario.sub, datos.estado);
   }
 
   @Put(':id')

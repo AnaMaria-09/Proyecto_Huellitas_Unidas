@@ -72,8 +72,9 @@ export class MascotasService {
     return this.listar(where, filtros);
   }
 
-  async cambiarEstado(id: number, nuevoEstado: EstadoMascota): Promise<Mascota> {
+  async cambiarEstado(id: number, fundacionId: number, nuevoEstado: EstadoMascota): Promise<Mascota> {
     const mascota = await this.obtenerPorId(id);
+    verificarDueno(mascota, fundacionId);
     validarTransicion(mascota, nuevoEstado);
     mascota.estado = nuevoEstado;
     return this.mascotas.save(mascota);

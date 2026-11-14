@@ -43,33 +43,39 @@ describe('MascotasService', () => {
   describe('cambiarEstado', () => {
     it('permite disponible → en_proceso', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
-      await expect(service.cambiarEstado(mascota.id, 'en_proceso')).resolves.toMatchObject({ estado: 'en_proceso' });
+      await expect(service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso')).resolves.toMatchObject({ estado: 'en_proceso' });
     });
 
     it('permite en_proceso → disponible (cancelar solicitud)', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
-      await service.cambiarEstado(mascota.id, 'en_proceso');
-      await expect(service.cambiarEstado(mascota.id, 'disponible')).resolves.toMatchObject({ estado: 'disponible' });
+      await service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso');
+      await expect(service.cambiarEstado(mascota.id, FUNDACION_ID, 'disponible')).resolves.toMatchObject({ estado: 'disponible' });
     });
 
     it('permite en_proceso → adoptada', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
-      await service.cambiarEstado(mascota.id, 'en_proceso');
-      await expect(service.cambiarEstado(mascota.id, 'adoptada')).resolves.toMatchObject({ estado: 'adoptada' });
+      await service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso');
+      await expect(service.cambiarEstado(mascota.id, FUNDACION_ID, 'adoptada')).resolves.toMatchObject({ estado: 'adoptada' });
     });
 
     it('rechaza disponible → adoptada', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
-      await expect(service.cambiarEstado(mascota.id, 'adoptada')).rejects.toThrow(ConflictException);
+      await expect(service.cambiarEstado(mascota.id, FUNDACION_ID, 'adoptada')).rejects.toThrow(ConflictException);
+    });
+
+    it('lanza Forbidden si otra fundación cambia el estado', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.cambiarEstado(mascota.id, 99, 'en_proceso')).rejects.toThrow(ForbiddenException);
+      await expect(service.obtenerPorId(mascota.id)).resolves.toMatchObject({ estado: 'disponible' });
     });
 
     it('rechaza cualquier cambio desde adoptada, indicando estado actual y solicitado', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
-      await service.cambiarEstado(mascota.id, 'en_proceso');
-      await service.cambiarEstado(mascota.id, 'adoptada');
+      await service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso');
+      await service.cambiarEstado(mascota.id, FUNDACION_ID, 'adoptada');
 
-      await expect(service.cambiarEstado(mascota.id, 'disponible')).rejects.toThrow(/'adoptada' a 'disponible'/);
-      await expect(service.cambiarEstado(mascota.id, 'en_proceso')).rejects.toThrow(ConflictException);
+      await expect(service.cambiarEstado(mascota.id, FUNDACION_ID, 'disponible')).rejects.toThrow(/'adoptada' a 'disponible'/);
+      await expect(service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso')).rejects.toThrow(ConflictException);
     });
   });
 
@@ -159,7 +165,7 @@ describe('MascotasService', () => {
 
     it('lanza Conflict si la mascota está en proceso', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
-      await service.cambiarEstado(mascota.id, 'en_proceso');
+      await service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso');
       await expect(service.eliminar(mascota.id, FUNDACION_ID)).rejects.toThrow(ConflictException);
     });
   });
