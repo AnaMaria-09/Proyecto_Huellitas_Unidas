@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_datos:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Opcional: docker compose --profile herramientas up -d pgadmin
+  pgadmin:
+    image: dpage/pgadmin4:8
+    profiles: ['herramientas']
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@huellitas.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-cambia-esta-contrasena}
+    ports:
+      - '5050:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Dentro de la red de compose la base se llama "postgres" y escucha en 5432,
+      # sin importar los valores de .env pensados para npm run start:dev.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_datos:

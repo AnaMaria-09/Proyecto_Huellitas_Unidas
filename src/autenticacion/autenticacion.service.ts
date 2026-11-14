@@ -4,7 +4,6 @@ import * as bcrypt from 'bcrypt';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { IniciarSesionDto } from './dto/iniciar-sesion.dto';
 import { RegistroDto } from './dto/registro.dto';
-import { obtenerJwtSecreto } from './jwt-secreto';
 import { PayloadJwt, sinPasswordHash, UsuarioPublico } from './usuario.model';
 
 const RONDAS_BCRYPT = 10;
@@ -12,15 +11,10 @@ const CREDENCIALES_INVALIDAS = 'Credenciales inválidas';
 
 @Injectable()
 export class AutenticacionService {
-  private readonly jwtSecreto: string;
-
   constructor(
     private readonly jwtService: JwtService,
     private readonly usuariosRepositorio: UsuariosRepositorio,
-  ) {
-    // Falla al arrancar si JWT_SECRET no está definido.
-    this.jwtSecreto = obtenerJwtSecreto();
-  }
+  ) {}
 
   async registrar(datos: RegistroDto): Promise<UsuarioPublico> {
     const email = datos.email.toLowerCase();
@@ -49,10 +43,7 @@ export class AutenticacionService {
     }
 
     const payload: PayloadJwt = { sub: usuario.id, rol: usuario.rol, email: usuario.email };
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.jwtSecreto,
-      expiresIn: '1h',
-    });
+    const accessToken = await this.jwtService.signAsync(payload, { expiresIn: '1h' });
     return { accessToken };
   }
 }
