@@ -26,7 +26,12 @@ const config: Config = {
       },
     ],
   },
-  moduleNameMapper: pathsToModuleNameMapper(paths, { prefix: '<rootDir>/' }),
+  moduleNameMapper: {
+    ...pathsToModuleNameMapper(paths, { prefix: '<rootDir>/' }),
+    // @nestjs/throttler es CommonJS y en el modo ESM de Jest su require('@nestjs/common') cae en un
+    // ciclo; las pruebas unitarias usan un stub de sus decoradores (los guards no se prueban aquí).
+    '^@nestjs/throttler$': '<rootDir>/src/common/testing/throttler.stub.ts',
+  },
   collectCoverageFrom: [
     'src/**/*.(t|j)s',
     'libs/**/*.(t|j)s',

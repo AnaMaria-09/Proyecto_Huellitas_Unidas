@@ -1,15 +1,21 @@
 import { jest } from '@jest/globals';
-import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
-import type { JwtService } from '@nestjs/jwt';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { crearUsuario, crearUsuariosRepositorioMock, UsuariosRepositorioMock } from '../usuarios/testing/usuario.fixture';
 import type { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { AutenticacionService } from './autenticacion.service';
 import type { ContrasenasService } from './contrasenas.service';
+import type { ParTokens, TokensService } from './tokens.service';
 
 describe('AutenticacionService', () => {
   let usuarios: UsuariosRepositorioMock;
   let contrasenas: { hashear: jest.Mock<ContrasenasService['hashear']>; coincide: jest.Mock<ContrasenasService['coincide']> };
-  let jwt: { signAsync: jest.Mock<(payload: object) => Promise<string>> };
+  let tokens: {
+    emitir: jest.Mock<TokensService['emitir']>;
+    rotar: jest.Mock<TokensService['rotar']>;
+    revocar: jest.Mock<TokensService['revocar']>;
+    revocarTodos: jest.Mock<TokensService['revocarTodos']>;
+  };
+  const par: ParTokens = { accessToken: 'access', refreshToken: 'refresh' };
   let service: AutenticacionService;
 
   const credenciales = { email: 'Ana@test.com', password: 'secreta123' };
@@ -20,11 +26,16 @@ describe('AutenticacionService', () => {
       hashear: jest.fn<ContrasenasService['hashear']>().mockResolvedValue('hash'),
       coincide: jest.fn<ContrasenasService['coincide']>().mockResolvedValue(true),
     };
-    jwt = { signAsync: jest.fn<(payload: object) => Promise<string>>().mockResolvedValue('token') };
+    tokens = {
+      emitir: jest.fn<TokensService['emitir']>().mockResolvedValue(par),
+      rotar: jest.fn<TokensService['rotar']>().mockResolvedValue(par),
+      revocar: jest.fn<TokensService['revocar']>().mockResolvedValue(undefined),
+      revocarTodos: jest.fn<TokensService['revocarTodos']>().mockResolvedValue(undefined),
+    };
     service = new AutenticacionService(
-      jwt as unknown as JwtService,
       usuarios as unknown as UsuariosRepositorio,
       contrasenas as unknown as ContrasenasService,
+      tokens as unknown as TokensService,
     );
   });
 
@@ -46,11 +57,12 @@ describe('AutenticacionService', () => {
   });
 
   describe('iniciarSesion', () => {
-    it('devuelve un access token con sub, rol y email', async () => {
-      usuarios.buscarPorEmailConPassword.mockResolvedValue(crearUsuario({ id: 5, rol: 'fundacion', passwordHash: 'hash' }));
+    it('devuelve { accessToken, refreshToken } emitidos para el usuario', async () => {
+      const usuario = crearUsuario({ id: 5, rol: 'fundacion', passwordHash: 'hash' });
+      usuarios.buscarPorEmailConPassword.mockResolvedValue(usuario);
 
-      await expect(service.iniciarSesion(credenciales)).resolves.toEqual({ accessToken: 'token' });
-      expect(jwt.signAsync).toHaveBeenCalledWith({ sub: 5, rol: 'fundacion', email: 'prueba@test.com' }, { expiresIn: '1h' });
+      await expect(service.iniciarSesion(credenciales)).resolves.toEqual(par);
+      expect(tokens.emitir).toHaveBeenCalledWith(usuario);
     });
 
     it('responde lo mismo si el email no existe o la contraseña no coincide', async () => {
@@ -65,7 +77,7 @@ describe('AutenticacionService', () => {
       usuarios.buscarPorEmailConPassword.mockResolvedValue(crearUsuario({ estado: 'inactivo', passwordHash: 'hash' }));
 
       await expect(service.iniciarSesion(credenciales)).rejects.toThrow(new ForbiddenException('La cuenta está desactivada'));
-      expect(jwt.signAsync).not.toHaveBeenCalled();
+      expect(tokens.emitir).not.toHaveBeenCalled();
     });
 
     it('a un usuario inactivo con contraseña incorrecta le responde 401, sin revelar el estado', async () => {
@@ -73,6 +85,48 @@ describe('AutenticacionService', () => {
       contrasenas.coincide.mockResolvedValue(false);
 
       await expect(service.iniciarSesion(credenciales)).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  it('refrescarToken delega la rotación en TokensService', async () => {
+    await expect(service.refrescarToken({ refreshToken: 'viejo' })).resolves.toEqual(par);
+    expect(tokens.rotar).toHaveBeenCalledWith('viejo');
+  });
+
+  it('cerrarSesion revoca solo el refresh token recibido, del usuario del token', async () => {
+    await service.cerrarSesion(5, { refreshToken: 'actual' });
+    expect(tokens.revocar).toHaveBeenCalledWith('actual', 5);
+    expect(tokens.revocarTodos).not.toHaveBeenCalled();
+  });
+
+  describe('cambiarContrasena', () => {
+    const datos = { contrasenaActual: 'secreta123', contrasenaNueva: 'nueva-secreta456' };
+
+    it('verifica la actual, guarda el hash de la nueva y revoca todos los refresh tokens', async () => {
+      usuarios.buscarPorIdConPassword.mockResolvedValue(crearUsuario({ id: 5, passwordHash: 'hash-actual' }));
+      contrasenas.hashear.mockResolvedValue('hash-nuevo');
+
+      await service.cambiarContrasena(5, datos);
+
+      expect(contrasenas.coincide).toHaveBeenCalledWith('secreta123', 'hash-actual');
+      expect(contrasenas.hashear).toHaveBeenCalledWith('nueva-secreta456');
+      expect(usuarios.actualizarPasswordHash).toHaveBeenCalledWith(5, 'hash-nuevo');
+      expect(tokens.revocarTodos).toHaveBeenCalledWith(5);
+    });
+
+    it('rechaza la contraseña actual incorrecta sin cambiar nada', async () => {
+      usuarios.buscarPorIdConPassword.mockResolvedValue(crearUsuario({ id: 5, passwordHash: 'hash-actual' }));
+      contrasenas.coincide.mockResolvedValue(false);
+
+      await expect(service.cambiarContrasena(5, datos)).rejects.toThrow(
+        new BadRequestException('La contraseña actual no es correcta'),
+      );
+      expect(usuarios.actualizarPasswordHash).not.toHaveBeenCalled();
+      expect(tokens.revocarTodos).not.toHaveBeenCalled();
+    });
+
+    it('lanza 404 si el usuario del token ya no existe', async () => {
+      await expect(service.cambiarContrasena(99, datos)).rejects.toThrow(NotFoundException);
     });
   });
 });

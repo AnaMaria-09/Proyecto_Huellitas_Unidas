@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioActual } from '../autenticacion/decoradores/usuario-actual.decorator';
 import { AutenticadoGuard } from '../autenticacion/guards/autenticado.guard';
@@ -9,7 +10,9 @@ import { ActualizarPerfilDto } from './dto/actualizar-perfil.dto';
 import { CambiarEstadoUsuarioDto } from './dto/cambiar-estado-usuario.dto';
 import { UsuariosService } from './usuarios.service';
 
+@ApiTags('usuarios')
 @Controller('usuarios')
+@ApiBearerAuth()
 @UseGuards(AutenticadoGuard, RolesGuard)
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}

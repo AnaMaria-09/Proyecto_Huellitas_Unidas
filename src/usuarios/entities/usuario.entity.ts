@@ -1,3 +1,4 @@
+import { ApiHideProperty } from '@nestjs/swagger';
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import type { EstadoUsuario, Rol } from '../../autenticacion/usuario.model';
 
@@ -13,7 +14,8 @@ export class Usuario {
   @Column({ length: 254, unique: true })
   email: string;
 
-  // Nunca se selecciona por defecto: solo UsuariosRepositorio.buscarPorEmailConPassword la trae.
+  // Nunca se selecciona por defecto: solo las consultas ...ConPassword de UsuariosRepositorio la traen.
+  @ApiHideProperty()
   @Column({ name: 'password_hash', length: 100, select: false })
   passwordHash: string;
 

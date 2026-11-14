@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AutenticacionModule } from './autenticacion/autenticacion.module';
@@ -19,6 +21,11 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     ConfigModule.forRoot(opcionesConfiguracion),
     DatabaseModule,
+    // Límite global por IP: 100 peticiones por minuto. Las rutas sensibles lo bajan con @Throttle.
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 100 }],
+      errorMessage: 'Demasiadas solicitudes. Intenta de nuevo en un minuto',
+    }),
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
     // Solo se registra si OBSERVE_APP_KEY y OBSERVE_APP_SECRET están definidas.
@@ -39,6 +46,6 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     FundacionesModule,
   ],
   controllers: [AppController, AdopcionesController, ArchivosController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
