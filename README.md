@@ -219,3 +219,37 @@ sin prefijo). 🔒 = requiere JWT en `Authorization: Bearer <token>`.
 ## Convenciones
 
 Revisa [CONVENTIONS.md](CONVENTIONS.md) antes de abrir un PR.
+
+## Despliegue
+
+Antes de desplegar en producción revisa la
+[documentación de despliegue de NestJS](https://docs.nestjs.com/deployment).
+El proyecto incluye `@nestjs/mau`, la plataforma oficial de Nest para desplegar
+en AWS:
+
+```bash
+npm install -g @nestjs/mau
+mau deploy
+```
+
+## Observabilidad
+
+La API ya incluye [NestJS Observe](https://observe.nestjs.com) (`@nestjs/observe`)
+en `app.module.ts`: trazas distribuidas, logs correlacionados, métricas de
+peticiones, seguimiento de errores y alertas. Para activarlo se necesitan las
+credenciales de la aplicación (`OBSERVE_APP_KEY` y `OBSERVE_APP_SECRET`), que
+deben llegar por variables de entorno y nunca escribirse en el código.
+
+## Recursos
+
+- [Documentación de NestJS](https://docs.nestjs.com)
+- [Canal de Discord de NestJS](https://discord.gg/G7Qnnhy)
+- [Cursos oficiales de NestJS](https://courses.nestjs.com/)
+- [NestJS Devtools](https://devtools.nestjs.com) para visualizar el grafo de la aplicación
+- [Documentación de TypeORM](https://typeorm.io)
+- [Documentación de class-validator](https://github.com/typestack/class-validator)
+
+## Licencia
+
+Proyecto académico privado (`UNLICENSED`). NestJS se distribuye bajo
+[licencia MIT](https://github.com/nestjs/nest/blob/master/LICENSE).
