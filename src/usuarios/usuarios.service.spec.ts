@@ -68,4 +68,26 @@ describe('UsuariosService', () => {
     expect(repositorio.actualizar).toHaveBeenCalledWith(expect.objectContaining({ id: 1, estado: 'inactivo' }));
     await expect(service.cambiarEstado(999, 'activo')).rejects.toThrow(NotFoundException);
   });
+
+  describe('cambiarRol', () => {
+    const admin = crearUsuario({ id: 9, rol: 'administrador' });
+
+    it('cambia el rol de otro usuario', async () => {
+      repositorio.buscarPorId.mockResolvedValue(crearUsuario({ id: 1, rol: 'ciudadano' }));
+
+      await expect(service.cambiarRol(1, 'fundacion', tokenDe(admin))).resolves.toMatchObject({ id: 1, rol: 'fundacion' });
+      expect(repositorio.actualizar).toHaveBeenCalledWith(expect.objectContaining({ id: 1, rol: 'fundacion' }));
+    });
+
+    it('un administrador no puede quitarse su propio rol (409)', async () => {
+      repositorio.buscarPorId.mockResolvedValue(admin);
+
+      await expect(service.cambiarRol(9, 'ciudadano', tokenDe(admin))).rejects.toThrow(ConflictException);
+      expect(repositorio.actualizar).not.toHaveBeenCalled();
+    });
+
+    it('lanza 404 si el usuario no existe', async () => {
+      await expect(service.cambiarRol(999, 'fundacion', tokenDe(admin))).rejects.toThrow(NotFoundException);
+    });
+  });
 });

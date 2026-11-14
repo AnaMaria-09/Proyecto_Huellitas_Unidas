@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import {
   EstadoUsuario,
   PayloadJwt,
+  Rol,
   sinPasswordHash,
   UsuarioPublico,
 } from '../autenticacion/usuario.model';
@@ -49,6 +50,16 @@ export class UsuariosService {
   async cambiarEstado(id: number, estado: EstadoUsuario): Promise<UsuarioPublico> {
     const usuario = await this.buscarOFallar(id);
     usuario.estado = estado;
+    return sinPasswordHash(await this.usuariosRepositorio.actualizar(usuario));
+  }
+
+  // Un administrador no puede quitarse su propio rol, para que siempre quede al menos uno.
+  async cambiarRol(id: number, rol: Rol, solicitante: PayloadJwt): Promise<UsuarioPublico> {
+    if (solicitante.sub === id && rol !== 'administrador') {
+      throw new ConflictException('Un administrador no puede quitarse su propio rol de administrador');
+    }
+    const usuario = await this.buscarOFallar(id);
+    usuario.rol = rol;
     return sinPasswordHash(await this.usuariosRepositorio.actualizar(usuario));
   }
 

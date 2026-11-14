@@ -1,17 +1,24 @@
-import { Body, Controller, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { UsuariosService } from '../usuarios/usuarios.service';
 import { AutenticacionService } from './autenticacion.service';
+import { Roles } from './decoradores/roles.decorator';
 import { UsuarioActual } from './decoradores/usuario-actual.decorator';
 import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
+import { CambiarRolDto } from './dto/cambiar-rol.dto';
 import { CerrarSesionDto } from './dto/cerrar-sesion.dto';
 import { IniciarSesionDto } from './dto/iniciar-sesion.dto';
 import { RefrescarTokenDto } from './dto/refrescar-token.dto';
 import { RegistroDto } from './dto/registro.dto';
 import { AutenticadoGuard } from './guards/autenticado.guard';
+import { RolesGuard } from './guards/roles.guard';
 import type { PayloadJwt } from './usuario.model';
 
 @Controller('autenticacion')
 export class AutenticacionController {
-  constructor(private readonly autenticacionService: AutenticacionService) {}
+  constructor(
+    private readonly autenticacionService: AutenticacionService,
+    private readonly usuariosService: UsuariosService,
+  ) {}
 
   // POST /autenticacion/registro
   @Post('registro')
@@ -48,5 +55,17 @@ export class AutenticacionController {
   @UseGuards(AutenticadoGuard)
   async cambiarContrasena(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CambiarContrasenaDto): Promise<void> {
     await this.autenticacionService.cambiarContrasena(usuario.sub, datos);
+  }
+
+  // PATCH /autenticacion/usuarios/:id/rol (solo administrador)
+  @Patch('usuarios/:id/rol')
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('administrador')
+  cambiarRol(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() datos: CambiarRolDto,
+    @UsuarioActual() usuario: PayloadJwt,
+  ) {
+    return this.usuariosService.cambiarRol(id, datos.rol, usuario);
   }
 }
