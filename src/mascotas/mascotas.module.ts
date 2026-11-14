@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { AutenticacionModule } from '../autenticacion/autenticacion.module';
 import { MascotasController } from './mascotas.controller';
 import { MascotasService } from './mascotas.service';
 
 @Module({
-  imports: [JwtModule.register({})],
+  // AutenticacionModule aporta los guards y el JwtModule configurado con JWT_SECRET.
+  imports: [AutenticacionModule],
   controllers: [MascotasController],
   providers: [MascotasService],
   exports: [MascotasService],
