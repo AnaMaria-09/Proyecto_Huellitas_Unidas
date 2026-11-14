@@ -1,8 +1,15 @@
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { jest } from '@jest/globals';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Between, EntityManager, ILike, MoreThanOrEqual } from 'typeorm';
 import { CreateMascotaDto } from './dto/create-mascota.dto';
+import { Mascota } from './entities/mascota.entity';
 import { MascotasService } from './mascotas.service';
+import { RepositorioMascotasFake } from './testing/repositorio-mascotas.fake';
 
 const FUNDACION_ID = 1;
+const PAGINA = { pagina: 1, limite: 20 };
 
 function datosMascota(cambios: Partial<CreateMascotaDto> = {}): CreateMascotaDto {
   return {
@@ -17,95 +24,143 @@ function datosMascota(cambios: Partial<CreateMascotaDto> = {}): CreateMascotaDto
 }
 
 describe('MascotasService', () => {
+  let repositorio: RepositorioMascotasFake;
   let service: MascotasService;
 
-  beforeEach(() => {
-    service = new MascotasService();
+  beforeEach(async () => {
+    repositorio = new RepositorioMascotasFake();
+    const modulo = await Test.createTestingModule({
+      providers: [MascotasService, { provide: getRepositoryToken(Mascota), useValue: repositorio }],
+    }).compile();
+    service = modulo.get(MascotasService);
+  });
+
+  it('crear guarda la mascota como disponible y de la fundación indicada', async () => {
+    const mascota = await service.crear(FUNDACION_ID, datosMascota());
+    expect(mascota).toMatchObject({ id: 1, fundacionId: FUNDACION_ID, estado: 'disponible' });
   });
 
   describe('cambiarEstado', () => {
-    it('permite disponible → en_proceso', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      expect(service.cambiarEstado(mascota.id, 'en_proceso').estado).toBe('en_proceso');
+    it('permite disponible → en_proceso', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.cambiarEstado(mascota.id, 'en_proceso')).resolves.toMatchObject({ estado: 'en_proceso' });
     });
 
-    it('permite en_proceso → disponible (cancelar solicitud)', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      service.cambiarEstado(mascota.id, 'en_proceso');
-      expect(service.cambiarEstado(mascota.id, 'disponible').estado).toBe('disponible');
+    it('permite en_proceso → disponible (cancelar solicitud)', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await service.cambiarEstado(mascota.id, 'en_proceso');
+      await expect(service.cambiarEstado(mascota.id, 'disponible')).resolves.toMatchObject({ estado: 'disponible' });
     });
 
-    it('permite en_proceso → adoptada', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      service.cambiarEstado(mascota.id, 'en_proceso');
-      expect(service.cambiarEstado(mascota.id, 'adoptada').estado).toBe('adoptada');
+    it('permite en_proceso → adoptada', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await service.cambiarEstado(mascota.id, 'en_proceso');
+      await expect(service.cambiarEstado(mascota.id, 'adoptada')).resolves.toMatchObject({ estado: 'adoptada' });
     });
 
-    it('rechaza disponible → adoptada', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      expect(() => service.cambiarEstado(mascota.id, 'adoptada')).toThrow(ConflictException);
+    it('rechaza disponible → adoptada', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.cambiarEstado(mascota.id, 'adoptada')).rejects.toThrow(ConflictException);
     });
 
-    it('rechaza cualquier cambio desde adoptada, indicando estado actual y solicitado', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      service.cambiarEstado(mascota.id, 'en_proceso');
-      service.cambiarEstado(mascota.id, 'adoptada');
+    it('rechaza cualquier cambio desde adoptada, indicando estado actual y solicitado', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await service.cambiarEstado(mascota.id, 'en_proceso');
+      await service.cambiarEstado(mascota.id, 'adoptada');
 
-      expect(() => service.cambiarEstado(mascota.id, 'disponible')).toThrow(/'adoptada' a 'disponible'/);
-      expect(() => service.cambiarEstado(mascota.id, 'en_proceso')).toThrow(ConflictException);
+      await expect(service.cambiarEstado(mascota.id, 'disponible')).rejects.toThrow(/'adoptada' a 'disponible'/);
+      await expect(service.cambiarEstado(mascota.id, 'en_proceso')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('cambiarEstadoPorSistema', () => {
+    it('aplica una transición válida sin validar dueño', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.cambiarEstadoPorSistema(mascota.id, 'en_proceso')).resolves.toMatchObject({ estado: 'en_proceso' });
+    });
+
+    it('rechaza una transición inválida con ConflictException', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.cambiarEstadoPorSistema(mascota.id, 'adoptada')).rejects.toThrow(ConflictException);
+    });
+
+    it('lanza 404 si la mascota no existe', async () => {
+      await expect(service.cambiarEstadoPorSistema(999, 'en_proceso')).rejects.toThrow(NotFoundException);
+    });
+
+    it('con manager usa su repositorio y bloquea la fila', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      const findOne = jest.spyOn(repositorio, 'findOne');
+      const manager = { getRepository: jest.fn(() => repositorio) } as unknown as EntityManager;
+
+      await service.cambiarEstadoPorSistema(mascota.id, 'en_proceso', manager);
+
+      expect(manager.getRepository).toHaveBeenCalledWith(Mascota);
+      expect(findOne).toHaveBeenCalledWith({ where: { id: mascota.id }, lock: { mode: 'pessimistic_write' } });
     });
   });
 
   describe('buscar', () => {
-    beforeEach(() => {
-      service.crear(FUNDACION_ID, datosMascota({ nombre: 'Perro joven', edadMeses: 6 }));
-      service.crear(FUNDACION_ID, datosMascota({ nombre: 'Perro adulto', edadMeses: 48, ciudad: 'Cali' }));
-      service.crear(FUNDACION_ID, datosMascota({ nombre: 'Gata', especie: 'gato', sexo: 'hembra', edadMeses: 12 }));
-      const enProceso = service.crear(FUNDACION_ID, datosMascota({ nombre: 'Perro en proceso' }));
-      service.cambiarEstado(enProceso.id, 'en_proceso');
+    it('sin filtros consulta solo las disponibles, paginado', async () => {
+      await service.buscar({ ...PAGINA, pagina: 2 });
+      expect(repositorio.findAndCount).toHaveBeenCalledWith({
+        where: { estado: 'disponible' },
+        order: { id: 'ASC' },
+        skip: 20,
+        take: 20,
+      });
     });
 
-    it('sin filtros devuelve solo las disponibles', () => {
-      expect(service.buscar({}).map((m) => m.nombre)).toEqual(['Perro joven', 'Perro adulto', 'Gata']);
+    it('arma los filtros en la consulta: ciudad con ILIKE escapado y rango de edad', async () => {
+      await service.buscar({ ...PAGINA, especie: 'gato', sexo: 'hembra', ciudad: ' bo%gotá ', edadMinMeses: 10, edadMaxMeses: 30 });
+      expect(repositorio.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            estado: 'disponible',
+            especie: 'gato',
+            sexo: 'hembra',
+            ciudad: ILike('bo\\%gotá'),
+            edadMeses: Between(10, 30),
+          },
+        }),
+      );
     });
 
-    it('filtra por especie y excluye las no disponibles', () => {
-      const resultado = service.buscar({ especie: 'perro' });
-      expect(resultado.map((m) => m.nombre)).toEqual(['Perro joven', 'Perro adulto']);
+    it('con solo edad mínima usa MoreThanOrEqual', async () => {
+      await service.buscar({ ...PAGINA, edadMinMeses: 6 });
+      expect(repositorio.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { estado: 'disponible', edadMeses: MoreThanOrEqual(6) } }),
+      );
     });
 
-    it('combina sexo y ciudad', () => {
-      expect(service.buscar({ sexo: 'hembra', ciudad: 'bogotá' }).map((m) => m.nombre)).toEqual(['Gata']);
+    it('lanza BadRequest si edadMinMeses > edadMaxMeses', async () => {
+      await expect(service.buscar({ ...PAGINA, edadMinMeses: 30, edadMaxMeses: 10 })).rejects.toThrow(BadRequestException);
     });
 
-    it('filtra por rango de edad', () => {
-      const resultado = service.buscar({ edadMinMeses: 10, edadMaxMeses: 30 });
-      expect(resultado.map((m) => m.nombre)).toEqual(['Gata']);
-    });
-
-    it('lanza BadRequest si edadMinMeses > edadMaxMeses', () => {
-      expect(() => service.buscar({ edadMinMeses: 30, edadMaxMeses: 10 })).toThrow(BadRequestException);
+    it('devuelve { datos, total, pagina, limite }', async () => {
+      await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.buscar(PAGINA)).resolves.toMatchObject({ total: 1, pagina: 1, limite: 20 });
     });
   });
 
   describe('actualizar', () => {
-    it('lanza Forbidden si la fundación no es la dueña', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      expect(() => service.actualizar(mascota.id, 99, { nombre: 'Otro' })).toThrow(ForbiddenException);
+    it('lanza Forbidden si la fundación no es la dueña', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await expect(service.actualizar(mascota.id, 99, { nombre: 'Otro' })).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('eliminar', () => {
-    it('elimina una mascota disponible', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      service.eliminar(mascota.id, FUNDACION_ID);
-      expect(service.obtenerDisponibles()).toHaveLength(0);
+    it('elimina una mascota disponible', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await service.eliminar(mascota.id, FUNDACION_ID);
+      await expect(service.obtenerPorId(mascota.id)).rejects.toThrow(NotFoundException);
     });
 
-    it('lanza Conflict si la mascota está en proceso', () => {
-      const mascota = service.crear(FUNDACION_ID, datosMascota());
-      service.cambiarEstado(mascota.id, 'en_proceso');
-      expect(() => service.eliminar(mascota.id, FUNDACION_ID)).toThrow(ConflictException);
+    it('lanza Conflict si la mascota está en proceso', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      await service.cambiarEstado(mascota.id, 'en_proceso');
+      await expect(service.eliminar(mascota.id, FUNDACION_ID)).rejects.toThrow(ConflictException);
     });
   });
 });

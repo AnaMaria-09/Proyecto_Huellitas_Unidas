@@ -1,7 +1,8 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { PaginacionDto } from '../../common/dto/paginacion.dto';
 
-export class BuscarMascotasDto {
+export class BuscarMascotasDto extends PaginacionDto {
   @IsOptional()
   @IsIn(['perro', 'gato', 'otro'])
   especie?: 'perro' | 'gato' | 'otro';
