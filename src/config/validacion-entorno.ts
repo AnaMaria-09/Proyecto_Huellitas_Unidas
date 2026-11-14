@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { PATRON_DURACION } from './duracion';
 import type { VariablesEntorno } from './env.model';
 
 export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
@@ -12,6 +13,10 @@ export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
   POSTGRES_PASSWORD: Joi.string().required(),
 
   JWT_SECRET: Joi.string().min(32).required(),
+  JWT_EXPIRES_IN: Joi.string().pattern(PATRON_DURACION, 'duración').default('15m'),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().pattern(PATRON_DURACION, 'duración').default('7d'),
+
+  CORS_ORIGINS: Joi.string().required(),
 
   OBSERVE_APP_KEY: Joi.string().optional(),
   OBSERVE_APP_SECRET: Joi.string().optional(),
@@ -31,7 +36,8 @@ export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
       'string.empty': 'La variable de entorno {#label} no puede estar vacía',
       'string.max': 'La variable de entorno {#label} debe tener como máximo {#limit} caracteres',
       'string.email': 'La variable de entorno {#label} debe ser un email válido',
-      'object.and': 'Las variables de entorno {#presentWithLabels} y {#missingWithLabels} deben definirse juntas',
+      'string.pattern.name': 'La variable de entorno {#label} debe ser una duración como 15m, 12h o 7d',
+    'object.and': 'Las variables de entorno {#presentWithLabels} y {#missingWithLabels} deben definirse juntas',
     },
     errors: { wrap: { label: false } },
   });

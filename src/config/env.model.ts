@@ -13,6 +13,12 @@ export interface VariablesEntorno {
   POSTGRES_PASSWORD: string;
 
   JWT_SECRET: string;
+  // Duraciones como "15m" o "7d" (ver duracion.ts).
+  JWT_EXPIRES_IN: string;
+  JWT_REFRESH_EXPIRES_IN: string;
+
+  // Orígenes permitidos por CORS, separados por comas.
+  CORS_ORIGINS: string;
 
   OBSERVE_APP_KEY?: string;
   OBSERVE_APP_SECRET?: string;
