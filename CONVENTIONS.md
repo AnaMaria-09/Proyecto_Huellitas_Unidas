@@ -34,3 +34,54 @@ src/<modulo>/
 - Las pruebas (`*.spec.ts`) viven junto al archivo que prueban.
 - Reglas puras del dominio (tablas de transiciones, cálculos) pueden ir en una
   carpeta `dominio/` para probarlas sin Nest ni base de datos.
+
+## Ramas
+
+Se crean siempre desde `main` actualizado (`git checkout main && git pull origin main`).
+
+| Prefijo  | Uso                                   | Ejemplo                         |
+| -------- | ------------------------------------- | ------------------------------- |
+| `feat/`  | Funcionalidad nueva                   | `feat/adopciones-dominio`       |
+| `fix/`   | Corrección de un error                | `fix/mascotas-filtro-ciudad`    |
+| `docs/`  | Solo documentación                    | `docs/readme-convenciones-ci`   |
+| `ci/`    | Integración continua y automatización | `ci/cache-npm`                  |
+| `test/`  | Solo pruebas                          | `test/usuarios-servicio`        |
+
+## Commits
+
+Usamos [Conventional Commits](https://www.conventionalcommits.org/es/) con la
+descripción en español, en modo imperativo y en minúscula:
+
+```
+<tipo>(<modulo>): <descripción corta>
+```
+
+| Tipo       | Cuándo                                        |
+| ---------- | --------------------------------------------- |
+| `feat`     | Funcionalidad nueva.                          |
+| `fix`      | Corrección de un error.                       |
+| `test`     | Agregar o corregir pruebas.                   |
+| `docs`     | Documentación.                                |
+| `ci`       | Flujos de integración continua.               |
+| `refactor` | Cambio interno sin alterar el comportamiento. |
+| `chore`    | Mantenimiento (dependencias, configuración).  |
+
+Ejemplos:
+
+```
+feat(mascotas): agregar búsqueda por ciudad
+fix(autenticacion): rechazar tokens expirados
+test(adopciones): cubrir la matriz completa de transiciones
+```
+
+Commits pequeños y con sentido: cada uno debe compilar y explicar un solo cambio.
+
+## Pull requests
+
+- Se abren hacia `main` y usan la plantilla de `.github/pull_request_template.md`.
+- Antes de abrirlo: `git pull --rebase origin main`.
+- `npm run build`, `npm run lint` y `npm run test` deben pasar (la CI lo verifica).
+- Lo revisa y aprueba **la otra persona del equipo** antes de mergear.
+- Sin marcas de agua: nada de `Co-Authored-By` automáticos, firmas de
+  herramientas ni menciones a asistentes en commits, PRs, código o comentarios.
+- Un PR resuelve una sola cosa; si crece demasiado, se divide.
