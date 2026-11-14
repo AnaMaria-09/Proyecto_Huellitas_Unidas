@@ -15,17 +15,26 @@ export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
 
   OBSERVE_APP_KEY: Joi.string().optional(),
   OBSERVE_APP_SECRET: Joi.string().optional(),
-}).prefs({
-  messages: {
-    'any.required': 'Falta la variable de entorno {#label}',
-    'any.only': 'La variable de entorno {#label} debe ser uno de: {#valids}',
-    'string.min': 'La variable de entorno {#label} debe tener al menos {#limit} caracteres',
-    'number.base': 'La variable de entorno {#label} debe ser un número',
-    'number.port': 'La variable de entorno {#label} debe ser un puerto válido',
-    'string.empty': 'La variable de entorno {#label} no puede estar vacía',
-  },
-  errors: { wrap: { label: false } },
-});
+
+  // Administrador inicial: opcionales, pero si se define una hay que definir la otra.
+  ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).optional(),
+  ADMIN_PASSWORD: Joi.string().min(8).max(64).optional(),
+})
+  .and('ADMIN_EMAIL', 'ADMIN_PASSWORD')
+  .prefs({
+    messages: {
+      'any.required': 'Falta la variable de entorno {#label}',
+      'any.only': 'La variable de entorno {#label} debe ser uno de: {#valids}',
+      'string.min': 'La variable de entorno {#label} debe tener al menos {#limit} caracteres',
+      'number.base': 'La variable de entorno {#label} debe ser un número',
+      'number.port': 'La variable de entorno {#label} debe ser un puerto válido',
+      'string.empty': 'La variable de entorno {#label} no puede estar vacía',
+      'string.max': 'La variable de entorno {#label} debe tener como máximo {#limit} caracteres',
+      'string.email': 'La variable de entorno {#label} debe ser un email válido',
+      'object.and': 'Las variables de entorno {#presentWithLabels} y {#missingWithLabels} deben definirse juntas',
+    },
+    errors: { wrap: { label: false } },
+  });
 
 // Las mismas opciones que ConfigModule aplica a Joi; las usa data-source.ts, que valida por su cuenta.
 // abortEarly: false lista todas las variables que fallan; allowUnknown: true porque process.env

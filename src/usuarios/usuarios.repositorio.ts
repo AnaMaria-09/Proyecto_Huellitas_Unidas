@@ -1,37 +1,58 @@
 import { Injectable } from '@nestjs/common';
-import { Usuario } from '../autenticacion/usuario.model';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import type { Rol } from '../autenticacion/usuario.model';
+import type { OpcionesPagina } from '../common/paginacion';
+import { Usuario } from './entities/usuario.entity';
 
-// TODO: el almacenamiento en memoria se reemplazará por TypeORM (repositorio de Usuario).
+export type DatosNuevoUsuario = Pick<Usuario, 'nombre' | 'email' | 'passwordHash' | 'rol'>;
+
 @Injectable()
 export class UsuariosRepositorio {
-  private usuarios: Usuario[] = [];
-  private siguienteId = 1;
+  constructor(@InjectRepository(Usuario) private readonly repositorio: Repository<Usuario>) {}
 
-  guardar(datos: Omit<Usuario, 'id'>): Usuario {
-    const usuario: Usuario = { id: this.siguienteId++, ...datos };
-    this.usuarios.push(usuario);
-    return usuario;
+  async guardar(datos: DatosNuevoUsuario): Promise<Usuario> {
+    const guardado = await this.repositorio.save(
+      this.repositorio.create({ ...datos, email: datos.email.toLowerCase() }),
+    );
+    // Se vuelve a leer para devolver los valores por defecto de la base sin passwordHash.
+    return this.repositorio.findOneByOrFail({ id: guardado.id });
   }
 
-  buscarPorId(id: number): Usuario | undefined {
-    return this.usuarios.find((u) => u.id === id);
+  async buscarPorId(id: number): Promise<Usuario | null> {
+    return this.repositorio.findOneBy({ id });
   }
 
-  buscarPorEmail(email: string): Usuario | undefined {
-    const normalizado = email.toLowerCase();
-    return this.usuarios.find((u) => u.email === normalizado);
+  async buscarPorEmail(email: string): Promise<Usuario | null> {
+    return this.repositorio.findOneBy({ email: email.toLowerCase() });
   }
 
-  listar(): Usuario[] {
-    return [...this.usuarios];
+  // Única consulta que trae passwordHash, para verificar la contraseña.
+  async buscarPorEmailConPassword(email: string): Promise<Usuario | null> {
+    return this.repositorio
+      .createQueryBuilder('usuario')
+      .addSelect('usuario.passwordHash')
+      .where('usuario.email = :email', { email: email.toLowerCase() })
+      .getOne();
   }
 
-  actualizar(usuario: Usuario): Usuario | undefined {
-    const indice = this.usuarios.findIndex((u) => u.id === usuario.id);
-    if (indice === -1) {
-      return undefined;
-    }
-    this.usuarios[indice] = usuario;
-    return usuario;
+  async listar(pagina: OpcionesPagina): Promise<[Usuario[], number]> {
+    return this.repositorio.findAndCount({ order: { id: 'ASC' }, ...pagina });
+  }
+
+  async listarFundacionesVerificadas(pagina: OpcionesPagina): Promise<[Usuario[], number]> {
+    return this.repositorio.findAndCount({
+      where: { rol: 'fundacion', verificada: true },
+      order: { id: 'ASC' },
+      ...pagina,
+    });
+  }
+
+  async existeConRol(rol: Rol): Promise<boolean> {
+    return this.repositorio.existsBy({ rol });
+  }
+
+  async actualizar(usuario: Usuario): Promise<Usuario> {
+    return this.repositorio.save(usuario);
   }
 }

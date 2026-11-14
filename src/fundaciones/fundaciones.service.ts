@@ -1,66 +1,59 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PayloadJwt, sinPasswordHash, Usuario, UsuarioPublico } from '../autenticacion/usuario.model';
+import { PayloadJwt, sinPasswordHash, UsuarioPublico } from '../autenticacion/usuario.model';
+import { PaginacionDto } from '../common/dto/paginacion.dto';
+import { opcionesPagina, Paginado, paginado } from '../common/paginacion';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { ActualizarFundacionDto } from './dto/actualizar-fundacion.dto';
 
-export type Fundacion = UsuarioPublico & { verificada: boolean };
+export type Fundacion = UsuarioPublico;
 
 @Injectable()
 export class FundacionesService {
   constructor(private readonly usuariosRepositorio: UsuariosRepositorio) {}
 
-  listarVerificadas(): Fundacion[] {
-    return this.usuariosRepositorio
-      .listar()
-      .filter((u) => u.rol === 'fundacion' && u.verificada === true)
-      .map(aFundacion);
+  async listarVerificadas(paginacion: PaginacionDto): Promise<Paginado<Fundacion>> {
+    const [fundaciones, total] = await this.usuariosRepositorio.listarFundacionesVerificadas(
+      opcionesPagina(paginacion),
+    );
+    return paginado([fundaciones.map(sinPasswordHash), total], paginacion);
   }
 
   // Las no verificadas solo las ven la propia fundación y los administradores;
   // para los demás responde 404 para no revelar que existen.
-  obtenerPorId(id: number, solicitante?: PayloadJwt): Fundacion {
-    const fundacion = this.buscarOFallar(id);
+  async obtenerPorId(id: number, solicitante?: PayloadJwt): Promise<Fundacion> {
+    const fundacion = await this.buscarOFallar(id);
     const puedeVer =
-      fundacion.verificada === true ||
-      solicitante?.rol === 'administrador' ||
-      solicitante?.sub === fundacion.id;
+      fundacion.verificada || solicitante?.rol === 'administrador' || solicitante?.sub === fundacion.id;
     if (!puedeVer) {
       throw new NotFoundException(`Fundación ${id} no encontrada`);
     }
-    return aFundacion(fundacion);
+    return sinPasswordHash(fundacion);
   }
 
-  actualizarMiFundacion(usuarioId: number, datos: ActualizarFundacionDto): Fundacion {
-    const fundacion = this.buscarOFallar(usuarioId);
+  async actualizarMiFundacion(usuarioId: number, datos: ActualizarFundacionDto): Promise<Fundacion> {
+    const fundacion = await this.buscarOFallar(usuarioId);
     // Se copian solo los campos de organización: 'verificada' nunca cambia aquí.
-    const actualizada: Usuario = {
-      ...fundacion,
-      nombreOrganizacion: datos.nombreOrganizacion ?? fundacion.nombreOrganizacion,
-      ciudad: datos.ciudad ?? fundacion.ciudad,
-      telefono: datos.telefono ?? fundacion.telefono,
-    };
-    this.usuariosRepositorio.actualizar(actualizada);
-    return aFundacion(actualizada);
+    fundacion.nombreOrganizacion = datos.nombreOrganizacion ?? fundacion.nombreOrganizacion;
+    fundacion.ciudad = datos.ciudad ?? fundacion.ciudad;
+    fundacion.telefono = datos.telefono ?? fundacion.telefono;
+    return sinPasswordHash(await this.usuariosRepositorio.actualizar(fundacion));
   }
 
-  cambiarVerificacion(id: number, verificada: boolean, solicitante: PayloadJwt): Fundacion {
+  async cambiarVerificacion(id: number, verificada: boolean, solicitante: PayloadJwt): Promise<Fundacion> {
     if (solicitante.rol !== 'administrador') {
       throw new ForbiddenException('Solo un administrador puede verificar fundaciones');
     }
-    const actualizada: Usuario = { ...this.buscarOFallar(id), verificada };
-    this.usuariosRepositorio.actualizar(actualizada);
-    return aFundacion(actualizada);
+    const fundacion = await this.buscarOFallar(id);
+    fundacion.verificada = verificada;
+    return sinPasswordHash(await this.usuariosRepositorio.actualizar(fundacion));
   }
 
-  private buscarOFallar(id: number): Usuario {
-    const usuario = this.usuariosRepositorio.buscarPorId(id);
+  private async buscarOFallar(id: number): Promise<Usuario> {
+    const usuario = await this.usuariosRepositorio.buscarPorId(id);
     if (!usuario || usuario.rol !== 'fundacion') {
       throw new NotFoundException(`Fundación ${id} no encontrada`);
     }
     return usuario;
   }
-}
-
-function aFundacion(usuario: Usuario): Fundacion {
-  return { ...sinPasswordHash(usuario), verificada: usuario.verificada ?? false };
 }

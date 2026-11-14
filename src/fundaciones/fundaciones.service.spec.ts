@@ -1,86 +1,83 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PayloadJwt, Rol, Usuario } from '../autenticacion/usuario.model';
+import {
+  crearUsuario,
+  crearUsuariosRepositorioMock,
+  tokenDe,
+  UsuariosRepositorioMock,
+} from '../usuarios/testing/usuario.fixture';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { ActualizarFundacionDto } from './dto/actualizar-fundacion.dto';
 import { FundacionesService } from './fundaciones.service';
 
-function crearUsuario(repositorio: UsuariosRepositorio, email: string, rol: Rol): Usuario {
-  return repositorio.guardar({
-    nombre: 'Prueba',
-    email,
-    passwordHash: 'hash',
-    rol,
-    estado: 'activo',
-    creadoEn: new Date(),
-  });
-}
-
-function token(usuario: Usuario): PayloadJwt {
-  return { sub: usuario.id, rol: usuario.rol, email: usuario.email };
-}
-
 describe('FundacionesService', () => {
-  let repositorio: UsuariosRepositorio;
+  let repositorio: UsuariosRepositorioMock;
   let service: FundacionesService;
-  let fundacion: Usuario;
-  let admin: Usuario;
-  let ciudadano: Usuario;
+  const admin = crearUsuario({ id: 2, rol: 'administrador' });
+  const ciudadano = crearUsuario({ id: 3, rol: 'ciudadano' });
+
+  function fundacion(verificada = false) {
+    return crearUsuario({ id: 1, rol: 'fundacion', email: 'patitas@test.com', verificada });
+  }
 
   beforeEach(() => {
-    repositorio = new UsuariosRepositorio();
-    service = new FundacionesService(repositorio);
-    fundacion = crearUsuario(repositorio, 'patitas@test.com', 'fundacion');
-    // El administrador se crea directo en el repositorio: el registro público no lo permite.
-    admin = crearUsuario(repositorio, 'admin@test.com', 'administrador');
-    ciudadano = crearUsuario(repositorio, 'ana@test.com', 'ciudadano');
+    repositorio = crearUsuariosRepositorioMock();
+    service = new FundacionesService(repositorio as unknown as UsuariosRepositorio);
+  });
+
+  it('listarVerificadas consulta solo verificadas, paginado', async () => {
+    repositorio.listarFundacionesVerificadas.mockResolvedValue([[fundacion(true)], 1]);
+
+    const pagina = await service.listarVerificadas({ pagina: 1, limite: 20 });
+
+    expect(repositorio.listarFundacionesVerificadas).toHaveBeenCalledWith({ skip: 0, take: 20 });
+    expect(pagina).toMatchObject({ total: 1, pagina: 1, limite: 20 });
   });
 
   describe('fundación no verificada', () => {
-    it('no aparece en el listado público', () => {
-      expect(service.listarVerificadas()).toEqual([]);
+    it('responde 404 al público y a otros usuarios', async () => {
+      repositorio.buscarPorId.mockResolvedValue(fundacion());
+
+      await expect(service.obtenerPorId(1)).rejects.toThrow(NotFoundException);
+      await expect(service.obtenerPorId(1, tokenDe(ciudadano))).rejects.toThrow(NotFoundException);
     });
 
-    it('responde 404 al público y a otros usuarios', () => {
-      expect(() => service.obtenerPorId(fundacion.id)).toThrow(NotFoundException);
-      expect(() => service.obtenerPorId(fundacion.id, token(ciudadano))).toThrow(NotFoundException);
-    });
+    it('es visible para la propia fundación y para el administrador', async () => {
+      repositorio.buscarPorId.mockResolvedValue(fundacion());
 
-    it('es visible para la propia fundación y para el administrador', () => {
-      expect(service.obtenerPorId(fundacion.id, token(fundacion)).verificada).toBe(false);
-      expect(service.obtenerPorId(fundacion.id, token(admin)).id).toBe(fundacion.id);
+      await expect(service.obtenerPorId(1, tokenDe(fundacion()))).resolves.toMatchObject({ verificada: false });
+      await expect(service.obtenerPorId(1, tokenDe(admin))).resolves.toMatchObject({ id: 1 });
     });
   });
 
   describe('cambiarVerificacion', () => {
-    it('solo la permite a un administrador', () => {
-      expect(() => service.cambiarVerificacion(fundacion.id, true, token(fundacion))).toThrow(ForbiddenException);
-      expect(() => service.cambiarVerificacion(fundacion.id, true, token(ciudadano))).toThrow(ForbiddenException);
-      expect(repositorio.buscarPorId(fundacion.id)?.verificada).toBeUndefined();
+    it('solo la permite a un administrador', async () => {
+      repositorio.buscarPorId.mockResolvedValue(fundacion());
+
+      await expect(service.cambiarVerificacion(1, true, tokenDe(fundacion()))).rejects.toThrow(ForbiddenException);
+      await expect(service.cambiarVerificacion(1, true, tokenDe(ciudadano))).rejects.toThrow(ForbiddenException);
+      expect(repositorio.actualizar).not.toHaveBeenCalled();
     });
 
-    it('con un administrador la fundación pasa a ser pública', () => {
-      service.cambiarVerificacion(fundacion.id, true, token(admin));
+    it('con un administrador guarda verificada', async () => {
+      repositorio.buscarPorId.mockResolvedValue(fundacion());
 
-      expect(service.listarVerificadas().map((f) => f.id)).toEqual([fundacion.id]);
-      expect(service.obtenerPorId(fundacion.id).verificada).toBe(true);
+      await expect(service.cambiarVerificacion(1, true, tokenDe(admin))).resolves.toMatchObject({ verificada: true });
+      expect(repositorio.actualizar).toHaveBeenCalledWith(expect.objectContaining({ id: 1, verificada: true }));
     });
 
-    it('lanza 404 si el id no es de una fundación', () => {
-      expect(() => service.cambiarVerificacion(ciudadano.id, true, token(admin))).toThrow(NotFoundException);
+    it('lanza 404 si el id no es de una fundación', async () => {
+      repositorio.buscarPorId.mockResolvedValue(ciudadano);
+      await expect(service.cambiarVerificacion(3, true, tokenDe(admin))).rejects.toThrow(NotFoundException);
     });
   });
 
-  it('actualizarMiFundacion cambia los datos de organización pero nunca verificada', () => {
-    const datos = {
-      nombreOrganizacion: 'Patitas Felices',
-      ciudad: 'Medellín',
-      verificada: true,
-    } as ActualizarFundacionDto;
+  it('actualizarMiFundacion cambia los datos de organización pero nunca verificada', async () => {
+    repositorio.buscarPorId.mockResolvedValue(fundacion());
+    const datos = { nombreOrganizacion: 'Patitas Felices', ciudad: 'Medellín', verificada: true } as ActualizarFundacionDto;
 
-    const actualizada = service.actualizarMiFundacion(fundacion.id, datos);
+    const actualizada = await service.actualizarMiFundacion(1, datos);
 
     expect(actualizada).toMatchObject({ nombreOrganizacion: 'Patitas Felices', ciudad: 'Medellín', verificada: false });
     expect(actualizada).not.toHaveProperty('passwordHash');
-    expect(service.listarVerificadas()).toEqual([]);
   });
 });

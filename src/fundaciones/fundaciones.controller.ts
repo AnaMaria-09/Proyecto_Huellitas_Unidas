@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioActual } from '../autenticacion/decoradores/usuario-actual.decorator';
 import { AutenticacionOpcionalGuard } from '../autenticacion/guards/autenticacion-opcional.guard';
 import { AutenticadoGuard } from '../autenticacion/guards/autenticado.guard';
 import { RolesGuard } from '../autenticacion/guards/roles.guard';
 import type { PayloadJwt } from '../autenticacion/usuario.model';
+import { PaginacionDto } from '../common/dto/paginacion.dto';
 import { ActualizarFundacionDto } from './dto/actualizar-fundacion.dto';
 import { CambiarVerificacionDto } from './dto/cambiar-verificacion.dto';
 import { FundacionesService } from './fundaciones.service';
@@ -13,10 +14,10 @@ import { FundacionesService } from './fundaciones.service';
 export class FundacionesController {
   constructor(private readonly fundacionesService: FundacionesService) {}
 
-  // GET /fundaciones (público, solo verificadas)
+  // GET /fundaciones?pagina=&limite= (público, solo verificadas)
   @Get()
-  listarVerificadas() {
-    return this.fundacionesService.listarVerificadas();
+  listarVerificadas(@Query() paginacion: PaginacionDto) {
+    return this.fundacionesService.listarVerificadas(paginacion);
   }
 
   // PATCH /fundaciones/mi_fundacion (va ANTES de /fundaciones/:id)

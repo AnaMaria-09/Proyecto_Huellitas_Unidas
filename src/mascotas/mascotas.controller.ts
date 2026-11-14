@@ -11,13 +11,14 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
+import { UsuarioActual } from '../autenticacion/decoradores/usuario-actual.decorator';
 import { AutenticadoGuard } from '../autenticacion/guards/autenticado.guard';
-import type { RequestConUsuario } from '../autenticacion/guards/autenticado.guard';
 import { RolesGuard } from '../autenticacion/guards/roles.guard';
+import type { PayloadJwt } from '../autenticacion/usuario.model';
+import { PaginacionDto } from '../common/dto/paginacion.dto';
 import { ActualizarMascotaDto } from './dto/actualizar-mascota.dto';
 import { BuscarMascotasDto } from './dto/buscar-mascotas.dto';
 import { CambiarEstadoDto } from './dto/cambiar-estado.dto';
@@ -32,19 +33,27 @@ export class MascotasController {
   @Post()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
-  crear(@Req() req: RequestConUsuario, @Body() datos: CreateMascotaDto) {
-    return this.mascotasService.crear(req.usuario!.sub, datos);
+  crear(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CreateMascotaDto) {
+    return this.mascotasService.crear(usuario.sub, datos);
   }
 
   @Get()
-  obtenerDisponibles() {
-    return this.mascotasService.obtenerDisponibles();
+  obtenerDisponibles(@Query() paginacion: PaginacionDto) {
+    return this.mascotasService.obtenerDisponibles(paginacion);
   }
 
   // Debe declararse antes de GET /:id para que "buscar" no se interprete como un id.
   @Get('buscar')
   buscar(@Query() filtros: BuscarMascotasDto) {
     return this.mascotasService.buscar(filtros);
+  }
+
+  // GET /mascotas/mis_mascotas: también antes de GET /:id.
+  @Get('mis_mascotas')
+  @UseGuards(AutenticadoGuard, RolesGuard)
+  @Roles('fundacion')
+  obtenerMisMascotas(@UsuarioActual() usuario: PayloadJwt, @Query() paginacion: PaginacionDto) {
+    return this.mascotasService.obtenerDeFundacion(usuario.sub, paginacion);
   }
 
   @Get(':id')
@@ -55,8 +64,12 @@ export class MascotasController {
   @Patch(':id/estado')
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
-  cambiarEstado(@Param('id', ParseIntPipe) id: number, @Body() datos: CambiarEstadoDto) {
-    return this.mascotasService.cambiarEstado(id, datos.estado);
+  cambiarEstado(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() usuario: PayloadJwt,
+    @Body() datos: CambiarEstadoDto,
+  ) {
+    return this.mascotasService.cambiarEstado(id, usuario.sub, datos.estado);
   }
 
   @Put(':id')
@@ -64,17 +77,17 @@ export class MascotasController {
   @Roles('fundacion')
   actualizar(
     @Param('id', ParseIntPipe) id: number,
-    @Req() req: RequestConUsuario,
+    @UsuarioActual() usuario: PayloadJwt,
     @Body() datos: ActualizarMascotaDto,
   ) {
-    return this.mascotasService.actualizar(id, req.usuario!.sub, datos);
+    return this.mascotasService.actualizar(id, usuario.sub, datos);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
-  eliminar(@Param('id', ParseIntPipe) id: number, @Req() req: RequestConUsuario) {
-    this.mascotasService.eliminar(id, req.usuario!.sub);
+  async eliminar(@Param('id', ParseIntPipe) id: number, @UsuarioActual() usuario: PayloadJwt): Promise<void> {
+    await this.mascotasService.eliminar(id, usuario.sub);
   }
 }

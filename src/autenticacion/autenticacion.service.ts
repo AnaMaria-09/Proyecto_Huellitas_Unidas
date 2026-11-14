@@ -1,12 +1,11 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
+import { ContrasenasService } from './contrasenas.service';
 import { IniciarSesionDto } from './dto/iniciar-sesion.dto';
 import { RegistroDto } from './dto/registro.dto';
 import { PayloadJwt, sinPasswordHash, UsuarioPublico } from './usuario.model';
 
-const RONDAS_BCRYPT = 10;
 const CREDENCIALES_INVALIDAS = 'Credenciales inválidas';
 
 @Injectable()
@@ -14,32 +13,34 @@ export class AutenticacionService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly usuariosRepositorio: UsuariosRepositorio,
+    private readonly contrasenas: ContrasenasService,
   ) {}
 
   async registrar(datos: RegistroDto): Promise<UsuarioPublico> {
-    const email = datos.email.toLowerCase();
-    if (this.usuariosRepositorio.buscarPorEmail(email)) {
+    if (await this.usuariosRepositorio.buscarPorEmail(datos.email)) {
       throw new ConflictException('El email ya está registrado');
     }
 
-    const usuario = this.usuariosRepositorio.guardar({
+    const usuario = await this.usuariosRepositorio.guardar({
       nombre: datos.nombre,
-      email,
-      passwordHash: await bcrypt.hash(datos.password, RONDAS_BCRYPT),
+      email: datos.email,
+      passwordHash: await this.contrasenas.hashear(datos.password),
       rol: datos.rol,
-      estado: 'activo',
-      creadoEn: new Date(),
     });
     return sinPasswordHash(usuario);
   }
 
   async iniciarSesion(datos: IniciarSesionDto): Promise<{ accessToken: string }> {
-    const usuario = this.usuariosRepositorio.buscarPorEmail(datos.email);
+    const usuario = await this.usuariosRepositorio.buscarPorEmailConPassword(datos.email);
     const passwordValida = usuario
-      ? await bcrypt.compare(datos.password, usuario.passwordHash)
+      ? await this.contrasenas.coincide(datos.password, usuario.passwordHash)
       : false;
     if (!usuario || !passwordValida) {
       throw new UnauthorizedException(CREDENCIALES_INVALIDAS);
+    }
+    // Se revisa después de la contraseña para no revelar el estado de la cuenta a quien no la conoce.
+    if (usuario.estado === 'inactivo') {
+      throw new ForbiddenException('La cuenta está desactivada');
     }
 
     const payload: PayloadJwt = { sub: usuario.id, rol: usuario.rol, email: usuario.email };

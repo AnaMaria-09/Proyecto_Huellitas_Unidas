@@ -1,87 +1,71 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { PayloadJwt, Rol, Usuario } from '../autenticacion/usuario.model';
+import { crearUsuario, crearUsuariosRepositorioMock, tokenDe, UsuariosRepositorioMock } from './testing/usuario.fixture';
 import { UsuariosRepositorio } from './usuarios.repositorio';
 import { UsuariosService } from './usuarios.service';
 
-function crearUsuario(repositorio: UsuariosRepositorio, email: string, rol: Rol = 'ciudadano'): Usuario {
-  return repositorio.guardar({
-    nombre: 'Prueba',
-    email,
-    passwordHash: 'hash',
-    rol,
-    estado: 'activo',
-    creadoEn: new Date(),
-  });
-}
-
-function token(usuario: Usuario): PayloadJwt {
-  return { sub: usuario.id, rol: usuario.rol, email: usuario.email };
-}
-
 describe('UsuariosService', () => {
-  let repositorio: UsuariosRepositorio;
+  let repositorio: UsuariosRepositorioMock;
   let service: UsuariosService;
 
   beforeEach(() => {
-    repositorio = new UsuariosRepositorio();
-    service = new UsuariosService(repositorio);
+    repositorio = crearUsuariosRepositorioMock();
+    service = new UsuariosService(repositorio as unknown as UsuariosRepositorio);
   });
 
   describe('actualizarPerfil', () => {
-    it('rechaza un email que ya usa otro usuario', () => {
-      const ana = crearUsuario(repositorio, 'ana@test.com');
-      crearUsuario(repositorio, 'luis@test.com');
+    it('rechaza un email que ya usa otro usuario', async () => {
+      repositorio.buscarPorId.mockResolvedValue(crearUsuario({ id: 1, email: 'ana@test.com' }));
+      repositorio.buscarPorEmail.mockResolvedValue(crearUsuario({ id: 2, email: 'luis@test.com' }));
 
-      expect(() => service.actualizarPerfil(ana.id, { email: 'Luis@test.com' })).toThrow(ConflictException);
+      await expect(service.actualizarPerfil(1, { email: 'Luis@test.com' })).rejects.toThrow(ConflictException);
+      expect(repositorio.actualizar).not.toHaveBeenCalled();
     });
 
-    it('permite conservar su propio email y cambiar el nombre', () => {
-      const ana = crearUsuario(repositorio, 'ana@test.com');
+    it('cambia el nombre, normaliza el email y no devuelve passwordHash', async () => {
+      repositorio.buscarPorId.mockResolvedValue(crearUsuario({ id: 1, email: 'ana@test.com', passwordHash: 'hash' }));
 
-      const perfil = service.actualizarPerfil(ana.id, { nombre: 'Ana María', email: 'ana@test.com' });
+      const perfil = await service.actualizarPerfil(1, { nombre: 'Ana María', email: 'ANA.M@test.com' });
 
-      expect(perfil).toMatchObject({ nombre: 'Ana María', email: 'ana@test.com' });
+      expect(perfil).toMatchObject({ nombre: 'Ana María', email: 'ana.m@test.com' });
       expect(perfil).not.toHaveProperty('passwordHash');
     });
   });
 
   describe('obtenerPorId', () => {
-    it('lanza 404 si el usuario no existe', () => {
-      const admin = crearUsuario(repositorio, 'admin@test.com', 'administrador');
-
-      expect(() => service.obtenerPorId(999, token(admin))).toThrow(NotFoundException);
+    it('lanza 404 si el usuario no existe', async () => {
+      const admin = crearUsuario({ id: 9, rol: 'administrador' });
+      await expect(service.obtenerPorId(999, tokenDe(admin))).rejects.toThrow(NotFoundException);
     });
 
-    it('permite al mismo usuario y al administrador, y prohíbe a otros', () => {
-      const ana = crearUsuario(repositorio, 'ana@test.com');
-      const luis = crearUsuario(repositorio, 'luis@test.com');
-      const admin = crearUsuario(repositorio, 'admin@test.com', 'administrador');
+    it('permite al mismo usuario y al administrador, y prohíbe a otros', async () => {
+      const ana = crearUsuario({ id: 1 });
+      repositorio.buscarPorId.mockResolvedValue(ana);
 
-      expect(service.obtenerPorId(ana.id, token(ana)).id).toBe(ana.id);
-      expect(service.obtenerPorId(ana.id, token(admin)).id).toBe(ana.id);
-      expect(() => service.obtenerPorId(ana.id, token(luis))).toThrow(ForbiddenException);
+      await expect(service.obtenerPorId(1, tokenDe(ana))).resolves.toMatchObject({ id: 1 });
+      await expect(service.obtenerPorId(1, tokenDe(crearUsuario({ id: 9, rol: 'administrador' })))).resolves.toMatchObject({ id: 1 });
+      await expect(service.obtenerPorId(1, tokenDe(crearUsuario({ id: 2 })))).rejects.toThrow(ForbiddenException);
     });
   });
 
-  it('obtenerPerfil lanza 404 si el usuario del token ya no existe', () => {
-    expect(() => service.obtenerPerfil(42)).toThrow(NotFoundException);
+  it('obtenerPerfil lanza 404 si el usuario del token ya no existe', async () => {
+    await expect(service.obtenerPerfil(42)).rejects.toThrow(NotFoundException);
   });
 
-  it('listar nunca incluye passwordHash', () => {
-    crearUsuario(repositorio, 'ana@test.com');
-    crearUsuario(repositorio, 'luis@test.com');
+  it('listar pagina y nunca incluye passwordHash', async () => {
+    repositorio.listar.mockResolvedValue([[crearUsuario({ id: 3, passwordHash: 'hash' })], 41]);
 
-    const usuarios = service.listar();
+    const pagina = await service.listar({ pagina: 3, limite: 20 });
 
-    expect(usuarios).toHaveLength(2);
-    usuarios.forEach((u) => expect(u).not.toHaveProperty('passwordHash'));
+    expect(repositorio.listar).toHaveBeenCalledWith({ skip: 40, take: 20 });
+    expect(pagina).toMatchObject({ total: 41, pagina: 3, limite: 20 });
+    expect(pagina.datos[0]).not.toHaveProperty('passwordHash');
   });
 
-  it('cambiarEstado actualiza el estado y lanza 404 si no existe', () => {
-    const ana = crearUsuario(repositorio, 'ana@test.com');
+  it('cambiarEstado guarda el nuevo estado y lanza 404 si no existe', async () => {
+    repositorio.buscarPorId.mockResolvedValueOnce(crearUsuario({ id: 1 }));
 
-    expect(service.cambiarEstado(ana.id, 'inactivo').estado).toBe('inactivo');
-    expect(repositorio.buscarPorId(ana.id)?.estado).toBe('inactivo');
-    expect(() => service.cambiarEstado(999, 'activo')).toThrow(NotFoundException);
+    await expect(service.cambiarEstado(1, 'inactivo')).resolves.toMatchObject({ estado: 'inactivo' });
+    expect(repositorio.actualizar).toHaveBeenCalledWith(expect.objectContaining({ id: 1, estado: 'inactivo' }));
+    await expect(service.cambiarEstado(999, 'activo')).rejects.toThrow(NotFoundException);
   });
 });
