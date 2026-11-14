@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { AutenticacionService } from './autenticacion.service';
 import { Roles } from './decoradores/roles.decorator';
@@ -13,6 +14,8 @@ import { AutenticadoGuard } from './guards/autenticado.guard';
 import { RolesGuard } from './guards/roles.guard';
 import type { PayloadJwt } from './usuario.model';
 
+const LIMITE_ESTRICTO = { limit: 5, ttl: 60_000 };
+
 @Controller('autenticacion')
 export class AutenticacionController {
   constructor(
@@ -20,8 +23,10 @@ export class AutenticacionController {
     private readonly usuariosService: UsuariosService,
   ) {}
 
+  // Registro e inicio de sesión: 5 intentos por minuto por IP, contra fuerza bruta.
   // POST /autenticacion/registro
   @Post('registro')
+  @Throttle({ default: LIMITE_ESTRICTO })
   @HttpCode(HttpStatus.CREATED)
   registrar(@Body() datos: RegistroDto) {
     return this.autenticacionService.registrar(datos);
@@ -29,6 +34,7 @@ export class AutenticacionController {
 
   // POST /autenticacion/iniciar_sesion → { accessToken, refreshToken }
   @Post('iniciar_sesion')
+  @Throttle({ default: LIMITE_ESTRICTO })
   @HttpCode(HttpStatus.OK)
   iniciarSesion(@Body() datos: IniciarSesionDto) {
     return this.autenticacionService.iniciarSesion(datos);
