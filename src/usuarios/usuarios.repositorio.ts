@@ -27,13 +27,25 @@ export class UsuariosRepositorio {
     return this.repositorio.findOneBy({ email: email.toLowerCase() });
   }
 
-  // Única consulta que trae passwordHash, para verificar la contraseña.
+  // Las dos consultas ...ConPassword son las únicas que traen passwordHash, para verificar la contraseña.
   async buscarPorEmailConPassword(email: string): Promise<Usuario | null> {
     return this.repositorio
       .createQueryBuilder('usuario')
       .addSelect('usuario.passwordHash')
       .where('usuario.email = :email', { email: email.toLowerCase() })
       .getOne();
+  }
+
+  async buscarPorIdConPassword(id: number): Promise<Usuario | null> {
+    return this.repositorio
+      .createQueryBuilder('usuario')
+      .addSelect('usuario.passwordHash')
+      .where('usuario.id = :id', { id })
+      .getOne();
+  }
+
+  async actualizarPasswordHash(id: number, passwordHash: string): Promise<void> {
+    await this.repositorio.update({ id }, { passwordHash });
   }
 
   async listar(pagina: OpcionesPagina): Promise<[Usuario[], number]> {

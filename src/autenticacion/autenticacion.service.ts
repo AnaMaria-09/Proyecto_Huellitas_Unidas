@@ -1,6 +1,14 @@
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { ContrasenasService } from './contrasenas.service';
+import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
 import { CerrarSesionDto } from './dto/cerrar-sesion.dto';
 import { IniciarSesionDto } from './dto/iniciar-sesion.dto';
 import { RefrescarTokenDto } from './dto/refrescar-token.dto';
@@ -54,5 +62,19 @@ export class AutenticacionService {
 
   async cerrarSesion(usuarioId: number, datos: CerrarSesionDto): Promise<void> {
     await this.tokens.revocar(datos.refreshToken, usuarioId);
+  }
+
+  // Tras cambiarla se revocan todos los refresh tokens: las demás sesiones tienen que volver a entrar.
+  async cambiarContrasena(usuarioId: number, datos: CambiarContrasenaDto): Promise<void> {
+    const usuario = await this.usuariosRepositorio.buscarPorIdConPassword(usuarioId);
+    if (!usuario) {
+      throw new NotFoundException(`Usuario ${usuarioId} no encontrado`);
+    }
+    if (!(await this.contrasenas.coincide(datos.contrasenaActual, usuario.passwordHash))) {
+      throw new BadRequestException('La contraseña actual no es correcta');
+    }
+
+    await this.usuariosRepositorio.actualizarPasswordHash(usuarioId, await this.contrasenas.hashear(datos.contrasenaNueva));
+    await this.tokens.revocarTodos(usuarioId);
   }
 }

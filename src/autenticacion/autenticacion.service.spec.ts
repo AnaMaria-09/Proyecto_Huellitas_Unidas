@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { crearUsuario, crearUsuariosRepositorioMock, UsuariosRepositorioMock } from '../usuarios/testing/usuario.fixture';
 import type { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { AutenticacionService } from './autenticacion.service';
@@ -97,5 +97,36 @@ describe('AutenticacionService', () => {
     await service.cerrarSesion(5, { refreshToken: 'actual' });
     expect(tokens.revocar).toHaveBeenCalledWith('actual', 5);
     expect(tokens.revocarTodos).not.toHaveBeenCalled();
+  });
+
+  describe('cambiarContrasena', () => {
+    const datos = { contrasenaActual: 'secreta123', contrasenaNueva: 'nueva-secreta456' };
+
+    it('verifica la actual, guarda el hash de la nueva y revoca todos los refresh tokens', async () => {
+      usuarios.buscarPorIdConPassword.mockResolvedValue(crearUsuario({ id: 5, passwordHash: 'hash-actual' }));
+      contrasenas.hashear.mockResolvedValue('hash-nuevo');
+
+      await service.cambiarContrasena(5, datos);
+
+      expect(contrasenas.coincide).toHaveBeenCalledWith('secreta123', 'hash-actual');
+      expect(contrasenas.hashear).toHaveBeenCalledWith('nueva-secreta456');
+      expect(usuarios.actualizarPasswordHash).toHaveBeenCalledWith(5, 'hash-nuevo');
+      expect(tokens.revocarTodos).toHaveBeenCalledWith(5);
+    });
+
+    it('rechaza la contraseña actual incorrecta sin cambiar nada', async () => {
+      usuarios.buscarPorIdConPassword.mockResolvedValue(crearUsuario({ id: 5, passwordHash: 'hash-actual' }));
+      contrasenas.coincide.mockResolvedValue(false);
+
+      await expect(service.cambiarContrasena(5, datos)).rejects.toThrow(
+        new BadRequestException('La contraseña actual no es correcta'),
+      );
+      expect(usuarios.actualizarPasswordHash).not.toHaveBeenCalled();
+      expect(tokens.revocarTodos).not.toHaveBeenCalled();
+    });
+
+    it('lanza 404 si el usuario del token ya no existe', async () => {
+      await expect(service.cambiarContrasena(99, datos)).rejects.toThrow(NotFoundException);
+    });
   });
 });

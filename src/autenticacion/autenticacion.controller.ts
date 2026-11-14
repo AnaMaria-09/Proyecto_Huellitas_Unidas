@@ -1,6 +1,7 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
 import { AutenticacionService } from './autenticacion.service';
 import { UsuarioActual } from './decoradores/usuario-actual.decorator';
+import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
 import { CerrarSesionDto } from './dto/cerrar-sesion.dto';
 import { IniciarSesionDto } from './dto/iniciar-sesion.dto';
 import { RefrescarTokenDto } from './dto/refrescar-token.dto';
@@ -39,5 +40,13 @@ export class AutenticacionController {
   @UseGuards(AutenticadoGuard)
   async cerrarSesion(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CerrarSesionDto): Promise<void> {
     await this.autenticacionService.cerrarSesion(usuario.sub, datos);
+  }
+
+  // PATCH /autenticacion/cambiar_contrasena: también cierra todas las sesiones (revoca los refresh tokens).
+  @Patch('cambiar_contrasena')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AutenticadoGuard)
+  async cambiarContrasena(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CambiarContrasenaDto): Promise<void> {
+    await this.autenticacionService.cambiarContrasena(usuario.sub, datos);
   }
 }

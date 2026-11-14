@@ -33,6 +33,8 @@ export type UsuariosRepositorioMock = Mocked<
     | 'buscarPorId'
     | 'buscarPorEmail'
     | 'buscarPorEmailConPassword'
+    | 'buscarPorIdConPassword'
+    | 'actualizarPasswordHash'
     | 'listar'
     | 'listarFundacionesVerificadas'
     | 'existeConRol'
@@ -47,6 +49,8 @@ export function crearUsuariosRepositorioMock(): UsuariosRepositorioMock {
     buscarPorId: jest.fn<UsuariosRepositorio['buscarPorId']>().mockResolvedValue(null),
     buscarPorEmail: jest.fn<UsuariosRepositorio['buscarPorEmail']>().mockResolvedValue(null),
     buscarPorEmailConPassword: jest.fn<UsuariosRepositorio['buscarPorEmailConPassword']>().mockResolvedValue(null),
+    buscarPorIdConPassword: jest.fn<UsuariosRepositorio['buscarPorIdConPassword']>().mockResolvedValue(null),
+    actualizarPasswordHash: jest.fn<UsuariosRepositorio['actualizarPasswordHash']>().mockResolvedValue(undefined),
     listar: jest.fn<UsuariosRepositorio['listar']>().mockResolvedValue([[], 0]),
     listarFundacionesVerificadas: jest
       .fn<UsuariosRepositorio['listarFundacionesVerificadas']>()
