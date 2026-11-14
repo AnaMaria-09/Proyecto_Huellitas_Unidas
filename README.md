@@ -69,3 +69,22 @@ npm run start:dev         # modo desarrollo con recarga
 > La configuración de base de datos, `docker-compose.yml`, `.env.example` y las
 > migraciones se están integrando; hasta entonces la API arranca con
 > almacenamiento en memoria usando solo `npm install` y `npm run start:dev`.
+
+## Variables de entorno
+
+| Variable                      | Obligatoria | Descripción                                                        | Ejemplo                  |
+| ----------------------------- | ----------- | ------------------------------------------------------------------ | ------------------------ |
+| `PORT`                        | No          | Puerto HTTP de la API (por defecto `3000`).                        | `3000`                   |
+| `JWT_SECRET`                  | Sí          | Secreto para firmar los JWT. Mínimo 32 caracteres.                 | `cambia-este-secreto...` |
+| `DB_HOST`                     | Sí          | Host de PostgreSQL.                                                | `localhost`              |
+| `DB_PORT`                     | Sí          | Puerto de PostgreSQL.                                              | `5432`                   |
+| `DB_USERNAME`                 | Sí          | Usuario de PostgreSQL.                                             | `huellitas`              |
+| `DB_PASSWORD`                 | Sí          | Contraseña de PostgreSQL.                                          | `********`               |
+| `DB_NAME`                     | Sí          | Nombre de la base de datos.                                        | `huellitas_unidas`       |
+| `ALMACENAMIENTO_DIR`          | No          | Directorio donde se guardan los archivos subidos.                  | `uploads`                |
+| `URL_FIRMADA_SECRETO`         | Sí          | Secreto HMAC para firmar URLs de archivos. Mínimo 32 caracteres.   | `otro-secreto-largo...`  |
+| `URL_FIRMADA_EXPIRA_SEGUNDOS` | No          | Vigencia de una URL firmada en segundos.                           | `300`                    |
+
+Nunca subas el archivo `.env` al repositorio: está en `.gitignore`. Los nombres
+exactos de las variables de base de datos se confirmarán cuando la configuración
+esté en `main`.
