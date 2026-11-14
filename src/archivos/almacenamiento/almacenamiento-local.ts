@@ -66,7 +66,7 @@ export class AlmacenamientoLocal implements ProveedorAlmacenamiento {
 
   // Protección contra path traversal: la clave es un nombre plano y la ruta final queda dentro del directorio.
   private resolverRuta(clave: string): string {
-    if (!clave || /[/\\0]/.test(clave) || clave.includes('..')) {
+    if (!clave || /[/\\\0]/.test(clave) || clave.includes('..')) {
       throw new BadRequestException('La clave del archivo no es válida');
     }
     const ruta = path.resolve(this.directorio, clave);
@@ -77,6 +77,7 @@ export class AlmacenamientoLocal implements ProveedorAlmacenamiento {
   }
 }
 
+// Se revisa la forma del error y no `instanceof Error`, que falla con errores creados en otro contexto de ejecución.
 function esArchivoInexistente(error: unknown): boolean {
-  return error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT';
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
