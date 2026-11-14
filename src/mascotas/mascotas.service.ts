@@ -18,6 +18,7 @@ import {
 } from 'typeorm';
 import { PaginacionDto } from '../common/dto/paginacion.dto';
 import { opcionesPagina, Paginado, paginado } from '../common/paginacion';
+import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { ActualizarMascotaDto } from './dto/actualizar-mascota.dto';
 import { BuscarMascotasDto } from './dto/buscar-mascotas.dto';
 import { CreateMascotaDto } from './dto/create-mascota.dto';
@@ -35,9 +36,18 @@ const ESTADOS_NO_ELIMINABLES: EstadoMascota[] = ['en_proceso', 'adoptada'];
 
 @Injectable()
 export class MascotasService {
-  constructor(@InjectRepository(Mascota) private readonly mascotas: Repository<Mascota>) {}
+  constructor(
+    @InjectRepository(Mascota) private readonly mascotas: Repository<Mascota>,
+    private readonly usuariosRepositorio: UsuariosRepositorio,
+  ) {}
 
   async crear(fundacionId: number, datos: CreateMascotaDto): Promise<Mascota> {
+    const fundacion = await this.usuariosRepositorio.buscarPorId(fundacionId);
+    if (!fundacion?.verificada) {
+      throw new ForbiddenException(
+        'Tu fundación aún no está verificada. Un administrador debe verificarla antes de publicar mascotas',
+      );
+    }
     return this.mascotas.save(this.mascotas.create({ ...datos, fundacionId, estado: 'disponible' }));
   }
 

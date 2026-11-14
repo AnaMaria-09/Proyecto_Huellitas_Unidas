@@ -6,6 +6,8 @@ import { Between, EntityManager, ILike, MoreThanOrEqual } from 'typeorm';
 import { CreateMascotaDto } from './dto/create-mascota.dto';
 import { Mascota } from './entities/mascota.entity';
 import { MascotasService } from './mascotas.service';
+import { crearUsuario, crearUsuariosRepositorioMock, UsuariosRepositorioMock } from '../usuarios/testing/usuario.fixture';
+import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { RepositorioMascotasFake } from './testing/repositorio-mascotas.fake';
 
 const FUNDACION_ID = 1;
@@ -25,19 +27,37 @@ function datosMascota(cambios: Partial<CreateMascotaDto> = {}): CreateMascotaDto
 
 describe('MascotasService', () => {
   let repositorio: RepositorioMascotasFake;
+  let usuarios: UsuariosRepositorioMock;
   let service: MascotasService;
 
   beforeEach(async () => {
     repositorio = new RepositorioMascotasFake();
+    usuarios = crearUsuariosRepositorioMock();
+    usuarios.buscarPorId.mockResolvedValue(crearUsuario({ id: FUNDACION_ID, rol: 'fundacion', verificada: true }));
     const modulo = await Test.createTestingModule({
-      providers: [MascotasService, { provide: getRepositoryToken(Mascota), useValue: repositorio }],
+      providers: [
+        MascotasService,
+        { provide: getRepositoryToken(Mascota), useValue: repositorio },
+        { provide: UsuariosRepositorio, useValue: usuarios },
+      ],
     }).compile();
     service = modulo.get(MascotasService);
   });
 
-  it('crear guarda la mascota como disponible y de la fundación indicada', async () => {
-    const mascota = await service.crear(FUNDACION_ID, datosMascota());
-    expect(mascota).toMatchObject({ id: 1, fundacionId: FUNDACION_ID, estado: 'disponible' });
+  describe('crear', () => {
+    it('guarda la mascota como disponible y de la fundación indicada', async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      expect(mascota).toMatchObject({ id: 1, fundacionId: FUNDACION_ID, estado: 'disponible' });
+    });
+
+    it('lanza Forbidden si la fundación no está verificada', async () => {
+      usuarios.buscarPorId.mockResolvedValue(crearUsuario({ id: FUNDACION_ID, rol: 'fundacion', verificada: false }));
+
+      await expect(service.crear(FUNDACION_ID, datosMascota())).rejects.toThrow(/no está verificada/);
+      await expect(service.crear(FUNDACION_ID, datosMascota())).rejects.toThrow(ForbiddenException);
+      // No se guardó nada.
+      await expect(service.obtenerPorId(1)).rejects.toThrow(NotFoundException);
+    });
   });
 
   describe('cambiarEstado', () => {
