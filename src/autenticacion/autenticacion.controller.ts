@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { AutenticacionService } from './autenticacion.service';
@@ -16,6 +17,7 @@ import type { PayloadJwt } from './usuario.model';
 
 const LIMITE_ESTRICTO = { limit: 5, ttl: 60_000 };
 
+@ApiTags('autenticacion')
 @Controller('autenticacion')
 export class AutenticacionController {
   constructor(
@@ -50,6 +52,7 @@ export class AutenticacionController {
   // POST /autenticacion/cerrar_sesion: revoca el refresh token de esta sesión.
   @Post('cerrar_sesion')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard)
   async cerrarSesion(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CerrarSesionDto): Promise<void> {
     await this.autenticacionService.cerrarSesion(usuario.sub, datos);
@@ -58,6 +61,7 @@ export class AutenticacionController {
   // PATCH /autenticacion/cambiar_contrasena: también cierra todas las sesiones (revoca los refresh tokens).
   @Patch('cambiar_contrasena')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard)
   async cambiarContrasena(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CambiarContrasenaDto): Promise<void> {
     await this.autenticacionService.cambiarContrasena(usuario.sub, datos);
@@ -65,6 +69,7 @@ export class AutenticacionController {
 
   // PATCH /autenticacion/usuarios/:id/rol (solo administrador)
   @Patch('usuarios/:id/rol')
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('administrador')
   cambiarRol(

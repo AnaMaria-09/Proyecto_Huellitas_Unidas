@@ -1,7 +1,8 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class CerrarSesionDto {
-  // El refresh token de la sesión que se cierra.
+  @ApiProperty({ description: 'Refresh token de la sesión que se cierra' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)

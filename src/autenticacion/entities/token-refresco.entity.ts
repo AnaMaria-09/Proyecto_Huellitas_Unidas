@@ -1,3 +1,4 @@
+import { ApiHideProperty } from '@nestjs/swagger';
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 
@@ -15,6 +16,7 @@ export class TokenRefresco {
   @JoinColumn({ name: 'usuario_id' })
   usuario?: Usuario;
 
+  @ApiHideProperty()
   @Index({ unique: true })
   @Column({ name: 'token_hash', length: 64 })
   tokenHash: string;

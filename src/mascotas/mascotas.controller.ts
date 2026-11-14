@@ -13,6 +13,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioActual } from '../autenticacion/decoradores/usuario-actual.decorator';
 import { AutenticadoGuard } from '../autenticacion/guards/autenticado.guard';
@@ -26,11 +27,13 @@ import { CreateMascotaDto } from './dto/create-mascota.dto';
 import { MascotasService } from './mascotas.service';
 
 // La fundación se identifica por el 'sub' del JWT.
+@ApiTags('mascotas')
 @Controller('mascotas')
 export class MascotasController {
   constructor(private readonly mascotasService: MascotasService) {}
 
   @Post()
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
   crear(@UsuarioActual() usuario: PayloadJwt, @Body() datos: CreateMascotaDto) {
@@ -50,6 +53,7 @@ export class MascotasController {
 
   // GET /mascotas/mis_mascotas: también antes de GET /:id.
   @Get('mis_mascotas')
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
   obtenerMisMascotas(@UsuarioActual() usuario: PayloadJwt, @Query() paginacion: PaginacionDto) {
@@ -62,6 +66,7 @@ export class MascotasController {
   }
 
   @Patch(':id/estado')
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
   cambiarEstado(
@@ -73,6 +78,7 @@ export class MascotasController {
   }
 
   @Put(':id')
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
   actualizar(
@@ -85,6 +91,7 @@ export class MascotasController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
   @UseGuards(AutenticadoGuard, RolesGuard)
   @Roles('fundacion')
   async eliminar(@Param('id', ParseIntPipe) id: number, @UsuarioActual() usuario: PayloadJwt): Promise<void> {
