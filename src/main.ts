@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule, ObserveInstrument } from './app.module';
+import { PREFIJO_API } from './common/prefijo-api';
 import type { VariablesEntorno } from './config/env.model';
 
 async function bootstrap() {
@@ -12,7 +13,7 @@ async function bootstrap() {
   });
   const config = app.get<ConfigService<VariablesEntorno, true>>(ConfigService);
 
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix(PREFIJO_API);
   app.use(helmet());
   app.enableCors({
     origin: config
