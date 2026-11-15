@@ -1,14 +1,17 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
+import { archivoEntorno } from '../config/archivo-entorno';
 import type { VariablesEntorno } from '../config/env.model';
 import { esquemaEntorno, opcionesValidacionEntorno } from '../config/validacion-entorno';
 import { opcionesPostgres } from './opciones-postgres';
 
 // DataSource para el CLI de TypeORM (npm run migration:*). La aplicación no lo usa:
 // se conecta con DatabaseModule y autoLoadEntities.
-if (existsSync('.env')) {
-  process.loadEnvFile('.env');
+// Con NODE_ENV=test usa .env.test; las variables ya definidas en el entorno no se sobrescriben.
+const archivo = archivoEntorno();
+if (existsSync(archivo)) {
+  process.loadEnvFile(archivo);
 }
 
 const { error, value } = esquemaEntorno.validate(process.env, opcionesValidacionEntorno);
