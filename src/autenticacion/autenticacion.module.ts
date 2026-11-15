@@ -11,6 +11,7 @@ import { TokenRefresco } from './entities/token-refresco.entity';
 import { AutenticacionOpcionalGuard } from './guards/autenticacion-opcional.guard';
 import { AutenticadoGuard } from './guards/autenticado.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { LimpiezaTokensService } from './limpieza-tokens.service';
 import { TokensService } from './tokens.service';
 
 @Module({
@@ -27,7 +28,15 @@ import { TokensService } from './tokens.service';
     forwardRef(() => UsuariosModule),
   ],
   controllers: [AutenticacionController],
-  providers: [AutenticacionService, ContrasenasService, TokensService, AutenticadoGuard, AutenticacionOpcionalGuard, RolesGuard],
+  providers: [
+    AutenticacionService,
+    ContrasenasService,
+    TokensService,
+    LimpiezaTokensService,
+    AutenticadoGuard,
+    AutenticacionOpcionalGuard,
+    RolesGuard,
+  ],
   // JwtModule se exporta porque Nest instancia los guards en el módulo que los usa,
   // y AutenticadoGuard necesita JwtService allí.
   exports: [JwtModule, AutenticacionService, ContrasenasService, AutenticadoGuard, AutenticacionOpcionalGuard, RolesGuard],
