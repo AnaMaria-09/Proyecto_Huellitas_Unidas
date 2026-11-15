@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { sinLimiteAutenticacion, THROTTLER_AUTENTICACION } from './common/limite-autenticacion';
 import { AutenticacionModule } from './autenticacion/autenticacion.module';
 import { opcionesConfiguracion } from './config/configuracion';
+import { tareasProgramadasActivas } from './config/tareas-programadas';
 import type { VariablesEntorno } from './config/env.model';
 import { DatabaseModule } from './database/database.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
@@ -24,6 +26,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     DatabaseModule,
     // Eventos entre módulos sin depender unos de otros (p. ej. mascota.eliminada → archivos).
     EventEmitterModule.forRoot(),
+    // Tareas diarias como la limpieza de tokens de refresco; no se registran con NODE_ENV=test.
+    ConditionalModule.registerWhen(ScheduleModule.forRoot(), tareasProgramadasActivas),
     // Límites por IP y por minuto: uno global y otro, más bajo, solo para las rutas con
     // @LimiteAutenticacion (registro e inicio de sesión). Los valores vienen de .env.
     ThrottlerModule.forRootAsync({
