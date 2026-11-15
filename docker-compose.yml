@@ -39,11 +39,16 @@ services:
       # sin importar los valores de .env pensados para npm run start:dev.
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
+      # Los archivos subidos viven en el volumen archivos_datos, no dentro del contenedor.
+      ALMACENAMIENTO_DIR: /app/uploads
     ports:
       - '${PORT:-3000}:${PORT:-3000}'
+    volumes:
+      - archivos_datos:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_datos:
+  archivos_datos:
