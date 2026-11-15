@@ -5,6 +5,7 @@ import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { sinLimiteAutenticacion, THROTTLER_AUTENTICACION } from './common/limite-autenticacion';
 import { AutenticacionModule } from './autenticacion/autenticacion.module';
 import { opcionesConfiguracion } from './config/configuracion';
 import type { VariablesEntorno } from './config/env.model';
@@ -21,10 +22,22 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     ConfigModule.forRoot(opcionesConfiguracion),
     DatabaseModule,
-    // Límite global por IP: 100 peticiones por minuto. Las rutas sensibles lo bajan con @Throttle.
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 100 }],
-      errorMessage: 'Demasiadas solicitudes. Intenta de nuevo en un minuto',
+    // Límites por IP y por minuto: uno global y otro, más bajo, solo para las rutas con
+    // @LimiteAutenticacion (registro e inicio de sesión). Los valores vienen de .env.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<VariablesEntorno, true>) => ({
+        throttlers: [
+          { ttl: 60_000, limit: config.get('LIMITE_PETICIONES_POR_MINUTO', { infer: true }) },
+          {
+            name: THROTTLER_AUTENTICACION,
+            ttl: 60_000,
+            limit: config.get('LIMITE_AUTENTICACION_POR_MINUTO', { infer: true }),
+            skipIf: sinLimiteAutenticacion,
+          },
+        ],
+        errorMessage: 'Demasiadas solicitudes. Intenta de nuevo en un minuto',
+      }),
     }),
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
