@@ -4,8 +4,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { sinLimiteAutenticacion, THROTTLER_AUTENTICACION } from './common/limite-autenticacion';
 import { AutenticacionModule } from './autenticacion/autenticacion.module';
 import { opcionesConfiguracion } from './config/configuracion';
@@ -15,6 +13,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { FundacionesModule } from './fundaciones/fundaciones.module';
 import { MascotasModule } from './mascotas/mascotas.module';
 import { ArchivosModule } from './archivos/archivos.module';
+import { SaludModule } from './salud/salud.module';
 import { AdopcionesModule } from './adopciones/adopciones.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -62,8 +61,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     FundacionesModule,
     ArchivosModule,
     AdopcionesModule,
+    SaludModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
