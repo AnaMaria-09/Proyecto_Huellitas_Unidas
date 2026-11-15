@@ -4,6 +4,8 @@ import type { EstadoMascota } from '../mascota.model';
 
 export class CambiarEstadoDto {
   @ApiProperty({ enum: ['disponible', 'en_proceso', 'adoptada'] })
-  @IsIn(['disponible', 'en_proceso', 'adoptada'])
+  @IsIn(['disponible', 'en_proceso', 'adoptada'], {
+    message: 'El estado debe ser uno de: disponible, en_proceso, adoptada',
+  })
   estado: EstadoMascota;
 }
