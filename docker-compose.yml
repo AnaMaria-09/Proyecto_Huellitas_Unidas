@@ -35,6 +35,9 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # La imagen es el build de producción: sin synchronize, el esquema lo crean las migraciones
+      # que el contenedor aplica al arrancar (ver Dockerfile), aunque .env diga development.
+      NODE_ENV: production
       # Dentro de la red de compose la base se llama "postgres" y escucha en 5432,
       # sin importar los valores de .env pensados para npm run start:dev.
       POSTGRES_HOST: postgres

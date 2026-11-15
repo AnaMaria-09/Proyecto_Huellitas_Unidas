@@ -17,4 +17,6 @@ COPY --from=build /app/dist ./dist
 RUN mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 3000
-CMD ["node", "dist/main"]
+# Aplica las migraciones pendientes y luego arranca la API; exec deja a node como proceso
+# principal para que reciba SIGTERM.
+CMD ["sh", "-c", "npm run migration:run:prod && exec node dist/main"]
