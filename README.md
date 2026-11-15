@@ -52,10 +52,10 @@ git clone https://github.com/AnaMaria-09/Proyecto_Huellitas_Unidas.git
 cd Proyecto_Huellitas_Unidas
 cp .env-example .env      # cambia las contraseñas y los secretos
 docker compose up -d --build postgres api
-docker compose exec api npm run migration:run:prod   # crea las tablas
 ```
 
-La API queda en `http://localhost:3000/api/v1` y Swagger en
+Al arrancar, el contenedor aplica las migraciones pendientes y corre la API en
+modo producción (sin `synchronize`), aunque `.env` diga `development`. La API queda en `http://localhost:3000/api/v1` y Swagger en
 `http://localhost:3000/api/docs`. Los archivos subidos se guardan en el volumen
 `archivos_datos`.
 
@@ -135,7 +135,7 @@ Nunca subas `.env` ni `.env.test` al repositorio: están en `.gitignore`.
 | `npm run migration:generate` | Genera una migración comparando las entidades con la base.   |
 | `npm run migration:run`      | Aplica las migraciones pendientes.                           |
 | `npm run migration:revert`   | Revierte la última migración.                                |
-| `npm run migration:run:prod` | Aplica las migraciones con el build (dentro del contenedor). |
+| `npm run migration:run:prod` | Aplica las migraciones con el build (el contenedor lo hace al arrancar). |
 
 ## Pruebas
 
