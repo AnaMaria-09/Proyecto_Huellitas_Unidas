@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Between, EntityManager, ILike, MoreThanOrEqual } from 'typeorm';
@@ -9,6 +10,7 @@ import { MascotasService } from './mascotas.service';
 import { crearUsuario, crearUsuariosRepositorioMock, UsuariosRepositorioMock } from '../usuarios/testing/usuario.fixture';
 import { UsuariosRepositorio } from '../usuarios/usuarios.repositorio';
 import { RepositorioMascotasFake } from './testing/repositorio-mascotas.fake';
+import { MASCOTA_ELIMINADA, MascotaEliminadaEvento } from './eventos/mascota-eliminada.evento';
 
 const FUNDACION_ID = 1;
 const PAGINA = { pagina: 1, limite: 20 };
@@ -29,16 +31,19 @@ describe('MascotasService', () => {
   let repositorio: RepositorioMascotasFake;
   let usuarios: UsuariosRepositorioMock;
   let service: MascotasService;
+  let emitAsync: jest.Mock<EventEmitter2['emitAsync']>;
 
   beforeEach(async () => {
     repositorio = new RepositorioMascotasFake();
     usuarios = crearUsuariosRepositorioMock();
+    emitAsync = jest.fn<EventEmitter2['emitAsync']>().mockResolvedValue([]);
     usuarios.buscarPorId.mockResolvedValue(crearUsuario({ id: FUNDACION_ID, rol: 'fundacion', verificada: true }));
     const modulo = await Test.createTestingModule({
       providers: [
         MascotasService,
         { provide: getRepositoryToken(Mascota), useValue: repositorio },
         { provide: UsuariosRepositorio, useValue: usuarios },
+        { provide: EventEmitter2, useValue: { emitAsync } },
       ],
     }).compile();
     service = modulo.get(MascotasService);
@@ -193,10 +198,24 @@ describe('MascotasService', () => {
       await expect(service.obtenerPorId(mascota.id)).rejects.toThrow(NotFoundException);
     });
 
+    it("emite 'mascota.eliminada' con el id después de borrarla", async () => {
+      const mascota = await service.crear(FUNDACION_ID, datosMascota());
+      emitAsync.mockImplementation(async () => {
+        // Cuando se emite, la mascota ya no existe.
+        await expect(service.obtenerPorId(mascota.id)).rejects.toThrow(NotFoundException);
+        return [];
+      });
+
+      await service.eliminar(mascota.id, FUNDACION_ID);
+
+      expect(emitAsync).toHaveBeenCalledWith(MASCOTA_ELIMINADA, new MascotaEliminadaEvento(mascota.id));
+    });
+
     it('lanza Conflict si la mascota está en proceso', async () => {
       const mascota = await service.crear(FUNDACION_ID, datosMascota());
       await service.cambiarEstado(mascota.id, FUNDACION_ID, 'en_proceso');
       await expect(service.eliminar(mascota.id, FUNDACION_ID)).rejects.toThrow(ConflictException);
+      expect(emitAsync).not.toHaveBeenCalled();
     });
   });
 });

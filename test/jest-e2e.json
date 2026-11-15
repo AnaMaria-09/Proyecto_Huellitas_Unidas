@@ -1,9 +1,24 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
+  "rootDir": "..",
   "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
+  "testRegex": "test/.*\\.e2e-spec\\.ts$",
+  "extensionsToTreatAsEsm": [".ts"],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
-  }
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        "useESM": true,
+        "tsconfig": {
+          "module": "esnext",
+          "moduleResolution": "bundler"
+        }
+      }
+    ]
+  },
+  "globalSetup": "<rootDir>/test/soporte/iniciar-servidor.ts",
+  "setupFiles": ["<rootDir>/test/soporte/preparar-entorno.ts"],
+  "testTimeout": 30000,
+  "globalTeardown": "<rootDir>/test/soporte/detener-servidor.ts",
+  "maxWorkers": 1
 }

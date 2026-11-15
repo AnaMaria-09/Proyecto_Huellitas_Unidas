@@ -3,6 +3,6 @@ import { IsBoolean } from 'class-validator';
 
 export class CambiarVerificacionDto {
   @ApiProperty({ example: true })
-  @IsBoolean()
+  @IsBoolean({ message: 'verificada debe ser true o false' })
   verificada: boolean;
 }

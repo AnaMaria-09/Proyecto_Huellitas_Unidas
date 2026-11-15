@@ -1,19 +1,22 @@
 import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { sinLimiteAutenticacion, THROTTLER_AUTENTICACION } from './common/limite-autenticacion';
 import { AutenticacionModule } from './autenticacion/autenticacion.module';
 import { opcionesConfiguracion } from './config/configuracion';
+import { tareasProgramadasActivas } from './config/tareas-programadas';
 import type { VariablesEntorno } from './config/env.model';
 import { DatabaseModule } from './database/database.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { FundacionesModule } from './fundaciones/fundaciones.module';
-import { AdopcionesController } from './adopciones/adopciones.controller';
 import { MascotasModule } from './mascotas/mascotas.module';
-import { ArchivosController } from './archivos/archivos.controller';
+import { ArchivosModule } from './archivos/archivos.module';
+import { SaludModule } from './salud/salud.module';
+import { AdopcionesModule } from './adopciones/adopciones.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -21,10 +24,26 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     ConfigModule.forRoot(opcionesConfiguracion),
     DatabaseModule,
-    // Límite global por IP: 100 peticiones por minuto. Las rutas sensibles lo bajan con @Throttle.
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 100 }],
-      errorMessage: 'Demasiadas solicitudes. Intenta de nuevo en un minuto',
+    // Eventos entre módulos sin depender unos de otros (p. ej. mascota.eliminada → archivos).
+    EventEmitterModule.forRoot(),
+    // Tareas diarias como la limpieza de tokens de refresco; no se registran con NODE_ENV=test.
+    ConditionalModule.registerWhen(ScheduleModule.forRoot(), tareasProgramadasActivas),
+    // Límites por IP y por minuto: uno global y otro, más bajo, solo para las rutas con
+    // @LimiteAutenticacion (registro e inicio de sesión). Los valores vienen de .env.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<VariablesEntorno, true>) => ({
+        throttlers: [
+          { ttl: 60_000, limit: config.get('LIMITE_PETICIONES_POR_MINUTO', { infer: true }) },
+          {
+            name: THROTTLER_AUTENTICACION,
+            ttl: 60_000,
+            limit: config.get('LIMITE_AUTENTICACION_POR_MINUTO', { infer: true }),
+            skipIf: sinLimiteAutenticacion,
+          },
+        ],
+        errorMessage: 'Demasiadas solicitudes. Intenta de nuevo en un minuto',
+      }),
     }),
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
@@ -44,8 +63,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AutenticacionModule,
     UsuariosModule,
     FundacionesModule,
+    ArchivosModule,
+    AdopcionesModule,
+    SaludModule,
   ],
-  controllers: [AppController, AdopcionesController, ArchivosController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

@@ -35,15 +35,36 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # La imagen es el build de producción: sin synchronize, el esquema lo crean las migraciones
+      # que el contenedor aplica al arrancar (ver Dockerfile), aunque .env diga development.
+      NODE_ENV: production
       # Dentro de la red de compose la base se llama "postgres" y escucha en 5432,
       # sin importar los valores de .env pensados para npm run start:dev.
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
+      # Los archivos subidos viven en el volumen archivos_datos, no dentro del contenedor.
+      ALMACENAMIENTO_DIR: /app/uploads
     ports:
       - '${PORT:-3000}:${PORT:-3000}'
+    volumes:
+      - archivos_datos:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
+    # La imagen no trae curl: se usa el fetch de Node contra GET /api/v1/salud.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:' + (process.env.PORT || 3000) + '/api/v1/salud').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
 
 volumes:
   postgres_datos:
+  archivos_datos:

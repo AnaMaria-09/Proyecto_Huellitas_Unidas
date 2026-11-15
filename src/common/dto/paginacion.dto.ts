@@ -11,15 +11,15 @@ export class PaginacionDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(1)
+  @IsInt({ message: 'pagina debe ser un número entero' })
+  @Min(1, { message: 'pagina debe ser mayor o igual a 1' })
   pagina: number = 1;
 
   @ApiPropertyOptional({ default: LIMITE_POR_DEFECTO, minimum: 1, maximum: LIMITE_MAXIMO })
   @IsOptional()
   @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(LIMITE_MAXIMO)
+  @IsInt({ message: 'limite debe ser un número entero' })
+  @Min(1, { message: 'limite debe ser mayor o igual a 1' })
+  @Max(LIMITE_MAXIMO, { message: `limite no puede ser mayor que ${LIMITE_MAXIMO}` })
   limite: number = LIMITE_POR_DEFECTO;
 }

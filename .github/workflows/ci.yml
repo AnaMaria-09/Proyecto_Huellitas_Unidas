@@ -10,25 +10,39 @@ jobs:
     name: Lint, build y pruebas
     runs-on: ubuntu-latest
 
+    # Valores de ejemplo SOLO para la CI (igual que .env.test.example). No son secretos reales
+    # ni se usan en producción. Las pruebas e2e los leen del entorno porque aquí no hay .env.test.
     env:
-      # Valor de ejemplo SOLO para la CI. No es un secreto real ni se usa en producción.
+      PORT: 3100
+      NODE_ENV: test
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: huellitas_unidas_test
+      POSTGRES_USER: huellitas
+      POSTGRES_PASSWORD: huellitas-ci
       JWT_SECRET: secreto-de-prueba-para-ci-no-usar-en-produccion
+      CORS_ORIGINS: http://localhost:4200
+      ADMIN_EMAIL: admin-e2e@huellitas.local
+      ADMIN_PASSWORD: admin-de-prueba-para-ci
+      ALMACENAMIENTO_DIR: uploads-test
+      URL_FIRMADA_SECRETO: secreto-de-urls-firmadas-de-prueba-para-ci
+      LIMITE_PETICIONES_POR_MINUTO: 10000
+      LIMITE_AUTENTICACION_POR_MINUTO: 10000
 
-    # TODO: activar cuando la base de datos (TypeORM + PostgreSQL) esté en main.
-    # services:
-    #   postgres:
-    #     image: postgres:16
-    #     env:
-    #       POSTGRES_USER: huellitas
-    #       POSTGRES_PASSWORD: huellitas-ci
-    #       POSTGRES_DB: huellitas_unidas_test
-    #     ports:
-    #       - 5432:5432
-    #     options: >-
-    #       --health-cmd "pg_isready -U huellitas"
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: huellitas
+          POSTGRES_PASSWORD: huellitas-ci
+          POSTGRES_DB: huellitas_unidas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U huellitas"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Descargar el código
@@ -52,6 +66,9 @@ jobs:
       - name: Pruebas unitarias
         run: npm run test
 
-      # TODO: activar cuando las pruebas e2e y la base de datos estén en main.
-      # - name: Pruebas end-to-end
-      #   run: npm run test:e2e
+      - name: Migraciones en la base de pruebas
+        run: npm run migration:run
+
+      # Compila, levanta la API en PORT contra la base de pruebas y la detiene al terminar.
+      - name: Pruebas end-to-end
+        run: npm run test:e2e

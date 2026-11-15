@@ -24,6 +24,15 @@ export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
   // Administrador inicial: opcionales, pero si se define una hay que definir la otra.
   ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).optional(),
   ADMIN_PASSWORD: Joi.string().min(8).max(64).optional(),
+
+  // Almacenamiento (módulo archivos).
+  ALMACENAMIENTO_DIR: Joi.string().default('uploads'),
+  URL_FIRMADA_SECRETO: Joi.string().min(32).required(),
+  URL_FIRMADA_EXPIRA_SEGUNDOS: Joi.number().integer().positive().default(300),
+
+  // Límites de peticiones por minuto e IP. Las pruebas e2e los suben en .env.test.
+  LIMITE_PETICIONES_POR_MINUTO: Joi.number().integer().positive().default(100),
+  LIMITE_AUTENTICACION_POR_MINUTO: Joi.number().integer().positive().default(5),
 })
   .and('ADMIN_EMAIL', 'ADMIN_PASSWORD')
   .prefs({
@@ -33,6 +42,8 @@ export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
       'string.min': 'La variable de entorno {#label} debe tener al menos {#limit} caracteres',
       'number.base': 'La variable de entorno {#label} debe ser un número',
       'number.port': 'La variable de entorno {#label} debe ser un puerto válido',
+      'number.integer': 'La variable de entorno {#label} debe ser un número entero',
+      'number.positive': 'La variable de entorno {#label} debe ser un número positivo',
       'string.empty': 'La variable de entorno {#label} no puede estar vacía',
       'string.max': 'La variable de entorno {#label} debe tener como máximo {#limit} caracteres',
       'string.email': 'La variable de entorno {#label} debe ser un email válido',

@@ -33,188 +33,250 @@ Cada dominio vive en su propio módulo dentro de `src/`:
 | `adopciones`    | Solicitudes de adopción: creación, evaluación, entrega y cancelación.             |
 | `archivos`      | Subida, validación y entrega mediante URLs firmadas de fotos y documentos.        |
 
-Roles disponibles: `ciudadano`, `fundacion` y `administrador`.
-
-> Estado actual: `adopciones` y `archivos` tienen por ahora solo sus reglas de
-> dominio y piezas base; sus endpoints llegarán cuando la base de datos esté
-> integrada.
+Roles disponibles: `ciudadano`, `fundacion` y `administrador`. El registro
+público solo crea ciudadanos y fundaciones; el administrador inicial se crea al
+arrancar con `ADMIN_EMAIL` y `ADMIN_PASSWORD`. Una fundación solo puede publicar
+mascotas cuando un administrador la verifica.
 
 ## Requisitos
 
 - Node.js 22 o superior y npm.
-- Docker y Docker Compose (para levantar la API junto con PostgreSQL).
+- Docker y Docker Compose (para PostgreSQL, o para levantar todo junto).
 
-## Ejecución rápida (versión actual)
+## Cómo levantar el proyecto
 
-Hoy la API funciona con almacenamiento en memoria, así que basta con Node:
+### Con Docker (API + PostgreSQL)
 
 ```bash
-# 1. Clonar e instalar dependencias
 git clone https://github.com/AnaMaria-09/Proyecto_Huellitas_Unidas.git
 cd Proyecto_Huellitas_Unidas
-npm install
-
-# 2. Definir JWT_SECRET (un texto aleatorio de 32 caracteres o más)
-export JWT_SECRET="<tu-secreto-de-32-caracteres-o-mas>"          # Linux / macOS / Git Bash
-# $env:JWT_SECRET = "<tu-secreto-de-32-caracteres-o-mas>"        # PowerShell
-
-# 3. Compilar y ejecutar
-npm run start          # desarrollo
-npm run start:dev      # modo observación (recarga al guardar)
-npm run start:prod     # producción (requiere npm run build antes)
+cp .env-example .env      # cambia las contraseñas y los secretos
+docker compose up -d --build postgres api
 ```
 
-La API queda en `http://localhost:3000`. Prueba rápida:
+Al arrancar, el contenedor aplica las migraciones pendientes y corre la API en
+modo producción (sin `synchronize`), aunque `.env` diga `development`. La API
+queda en `http://localhost:3000/api/v1` y Swagger en
+`http://localhost:3000/api/docs`. Los archivos subidos se guardan en el volumen
+`archivos_datos`.
+
+El servicio `api` tiene un healthcheck que consulta `GET /api/v1/salud` con el
+`fetch` de Node (la imagen no trae curl). `docker compose ps` muestra `healthy`
+cuando la API y la base de datos responden.
+
+### En local (PostgreSQL en Docker)
 
 ```bash
-curl -X POST http://localhost:3000/autenticacion/registro \
+npm install
+cp .env-example .env               # cambia las contraseñas y los secretos
+docker compose up -d postgres
+npm run migration:run              # crea las tablas
+npm run start:dev                  # modo desarrollo con recarga
+```
+
+Si el puerto 5432 ya lo usa otro PostgreSQL, cambia `POSTGRES_PORT` en `.env`
+(por ejemplo a `5436`): `docker-compose.yml` publica la base en ese puerto.
+
+Para generar secretos largos:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+> Con `NODE_ENV=development` TypeORM sincroniza el esquema al arrancar. Si
+> cambias una entidad, genera la migración **antes** de levantar la API
+> (`npm run migration:generate -- src/database/migrations/<Nombre>`); si no,
+> la tabla ya existirá y la migración saldrá vacía.
+
+Prueba rápida:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/autenticacion/registro \
   -H "Content-Type: application/json" \
   -d '{"nombre":"Ana","email":"ana@example.com","password":"clave-segura-123","rol":"ciudadano"}'
 ```
 
-Como los datos están en memoria, se pierden al reiniciar la API. Por ahora el
-archivo `.env` no se carga automáticamente: eso llegará con `@nestjs/config`.
-
-## Cómo levantar el proyecto con base de datos
-
-### Con Docker (recomendado)
-
-```bash
-cp .env.example .env      # completa los valores
-docker compose up --build
-```
-
-La API queda en `http://localhost:3000` y PostgreSQL en el puerto definido en `.env`.
-
-### Sin Docker
-
-Necesitas una instancia de PostgreSQL accesible con los datos de `.env`.
-
-```bash
-npm install
-cp .env.example .env      # completa los valores
-npm run migration:run     # crea las tablas
-npm run start:dev         # modo desarrollo con recarga
-```
-
-> La configuración de base de datos, `docker-compose.yml`, `.env.example` y las
-> migraciones se están integrando; hasta entonces la API arranca con
-> almacenamiento en memoria usando solo `npm install` y `npm run start:dev`.
-
 ## Variables de entorno
 
-| Variable                      | Obligatoria | Descripción                                                        | Ejemplo                  |
-| ----------------------------- | ----------- | ------------------------------------------------------------------ | ------------------------ |
-| `PORT`                        | No          | Puerto HTTP de la API (por defecto `3000`).                        | `3000`                   |
-| `JWT_SECRET`                  | Sí          | Secreto para firmar los JWT. Mínimo 32 caracteres.                 | `cambia-este-secreto...` |
-| `DB_HOST`                     | Sí          | Host de PostgreSQL.                                                | `localhost`              |
-| `DB_PORT`                     | Sí          | Puerto de PostgreSQL.                                              | `5432`                   |
-| `DB_USERNAME`                 | Sí          | Usuario de PostgreSQL.                                             | `huellitas`              |
-| `DB_PASSWORD`                 | Sí          | Contraseña de PostgreSQL.                                          | `********`               |
-| `DB_NAME`                     | Sí          | Nombre de la base de datos.                                        | `huellitas_unidas`       |
-| `ALMACENAMIENTO_DIR`          | No          | Directorio donde se guardan los archivos subidos.                  | `uploads`                |
-| `URL_FIRMADA_SECRETO`         | Sí          | Secreto HMAC para firmar URLs de archivos. Mínimo 32 caracteres.   | `otro-secreto-largo...`  |
-| `URL_FIRMADA_EXPIRA_SEGUNDOS` | No          | Vigencia de una URL firmada en segundos.                           | `300`                    |
+Están todas en [`.env-example`](.env-example). Al arrancar se validan con Joi: si
+falta una obligatoria o tiene un formato inválido, la API no arranca y dice cuál.
 
-Nunca subas el archivo `.env` al repositorio: está en `.gitignore`. Los nombres
-exactos de las variables de base de datos se confirmarán cuando la configuración
-esté en `main`.
+| Variable                                 | Obligatoria | Descripción                                                 | Por defecto |
+| ---------------------------------------- | ----------- | ----------------------------------------------------------- | ----------- |
+| `PORT`                                   | Sí          | Puerto HTTP de la API.                                      |             |
+| `NODE_ENV`                               | Sí          | `development`, `production` o `test`.                       |             |
+| `POSTGRES_HOST`                          | Sí          | Host de PostgreSQL.                                         |             |
+| `POSTGRES_PORT`                          | Sí          | Puerto de PostgreSQL.                                       |             |
+| `POSTGRES_DB`                            | Sí          | Nombre de la base de datos.                                 |             |
+| `POSTGRES_USER`                          | Sí          | Usuario de PostgreSQL.                                      |             |
+| `POSTGRES_PASSWORD`                      | Sí          | Contraseña de PostgreSQL.                                   |             |
+| `JWT_SECRET`                             | Sí          | Secreto para firmar los JWT. Mínimo 32 caracteres.          |             |
+| `JWT_EXPIRES_IN`                         | No          | Duración del access token (`15m`, `12h`, `7d`…).            | `15m`       |
+| `JWT_REFRESH_EXPIRES_IN`                 | No          | Duración del refresh token.                                 | `7d`        |
+| `CORS_ORIGINS`                           | Sí          | Orígenes permitidos, separados por comas.                   |             |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD`         | No          | Administrador inicial. Se definen las dos o ninguna.        |             |
+| `ALMACENAMIENTO_DIR`                     | No          | Directorio de los archivos subidos.                         | `uploads`   |
+| `URL_FIRMADA_SECRETO`                    | Sí          | Secreto HMAC de las URLs de descarga. Mínimo 32 caracteres. |             |
+| `URL_FIRMADA_EXPIRA_SEGUNDOS`            | No          | Vigencia de una URL firmada.                                | `300`       |
+| `LIMITE_PETICIONES_POR_MINUTO`           | No          | Peticiones por minuto e IP en toda la API.                  | `100`       |
+| `LIMITE_AUTENTICACION_POR_MINUTO`        | No          | Intentos por minuto e IP de registro e inicio de sesión.    | `5`         |
+| `OBSERVE_APP_KEY` / `OBSERVE_APP_SECRET` | No          | Credenciales de NestJS Observe. Sin ellas no se activa.     |             |
+
+Nunca subas `.env` ni `.env.test` al repositorio: están en `.gitignore`.
 
 ## Scripts de npm
 
-| Script                  | Qué hace                                                   |
-| ----------------------- | ---------------------------------------------------------- |
-| `npm run start`         | Arranca la API.                                            |
-| `npm run start:dev`     | Arranca en modo desarrollo con recarga automática.         |
-| `npm run start:debug`   | Arranca con el inspector de Node activo.                   |
-| `npm run start:prod`    | Ejecuta la versión compilada (`dist/main`).                |
-| `npm run build`         | Compila el proyecto a `dist/`.                             |
-| `npm run lint`          | Revisa el código con oxlint.                               |
-| `npm run format`        | Formatea el código con Prettier.                           |
-| `npm run test`          | Ejecuta las pruebas unitarias.                             |
-| `npm run test:watch`    | Ejecuta las pruebas en modo observación.                   |
-| `npm run test:cov`      | Ejecuta las pruebas con reporte de cobertura.              |
-| `npm run test:e2e`      | Ejecuta las pruebas end-to-end.                            |
-| `npm run migration:run` | Aplica las migraciones de TypeORM (cuando estén en `main`). |
+| Script                       | Qué hace                                                     |
+| ---------------------------- | ------------------------------------------------------------ |
+| `npm run start:dev`          | Arranca en modo desarrollo con recarga automática.           |
+| `npm run start:debug`        | Arranca con el inspector de Node activo.                     |
+| `npm run build`              | Compila el proyecto a `dist/`.                               |
+| `npm run start:prod`         | Ejecuta la versión compilada (`dist/main`).                  |
+| `npm run lint`               | Revisa el código con oxlint.                                 |
+| `npm run format`             | Formatea el código con Prettier.                             |
+| `npm run test`               | Pruebas unitarias.                                           |
+| `npm run test:cov`           | Pruebas unitarias con cobertura en `./coverage`.             |
+| `npm run test:e2e`           | Pruebas end-to-end contra una base de pruebas.               |
+| `npm run migration:generate` | Genera una migración comparando las entidades con la base.   |
+| `npm run migration:run`      | Aplica las migraciones pendientes.                           |
+| `npm run migration:revert`   | Revierte la última migración.                                |
+| `npm run migration:run:prod` | Aplica las migraciones con el build (el contenedor lo hace al arrancar). |
 
 ## Pruebas
 
+Usa siempre los scripts de npm y no `npx jest`: activan el modo ESM de Node
+(`--experimental-vm-modules`), que Nest 12 necesita.
+
 ```bash
-npm run test        # pruebas unitarias (*.spec.ts)
-npm run test:cov    # con cobertura en ./coverage
-npm run test:e2e    # pruebas end-to-end (requieren base de datos)
+npm run test        # pruebas unitarias (*.spec.ts), sin base de datos
+npm run test:cov    # con cobertura
 ```
 
-Usa siempre los scripts de npm y no `npx jest`: el script activa el modo ESM de
-Node (`--experimental-vm-modules`), que Nest 12 necesita.
+### Pruebas end-to-end
+
+Usan su propia base de datos (`huellitas_unidas_test`), que vacían entre
+archivos, y su propio archivo de entorno:
+
+```bash
+cp .env.test.example .env.test     # cambia las contraseñas y los secretos
+docker compose up -d postgres
+docker compose exec postgres createdb -U huellitas huellitas_unidas_test   # solo la primera vez
+npm run test:e2e
+```
+
+`npm run test:e2e` compila la API, aplica las migraciones en la base de pruebas,
+la arranca con `NODE_ENV=test` en el `PORT` de `.env.test` (3100 en el ejemplo)
+y la detiene al terminar. Las pruebas le hablan por HTTP con Supertest. En
+`.env.test` los límites de peticiones se suben para poder registrar muchos
+usuarios seguidos. En la CI las mismas variables vienen del workflow y
+PostgreSQL 16 corre como servicio.
 
 ## Documentación de la API (Swagger)
 
-Cuando Swagger esté integrado, la documentación interactiva estará en
-`http://localhost:3000/api/docs`.
+Con la API corriendo: `http://localhost:3000/api/docs`. Para probar rutas
+protegidas, inicia sesión, copia el `accessToken` y pégalo en **Authorize**.
 
 ## Resumen de endpoints
 
-Todas las rutas se publicarán bajo el prefijo `/api/v1` (planeado; hoy se sirven
-sin prefijo). 🔒 = requiere JWT en `Authorization: Bearer <token>`.
+Todas las rutas usan el prefijo `/api/v1`. 🔒 = requiere `Authorization: Bearer <accessToken>`.
 
 ### autenticacion
 
-| Método | Ruta                             | Acceso  | Descripción                           |
-| ------ | -------------------------------- | ------- | ------------------------------------- |
-| POST   | `/autenticacion/registro`        | Público | Registra un ciudadano o una fundación. |
-| POST   | `/autenticacion/iniciar_sesion`  | Público | Devuelve un JWT.                      |
+| Método | Ruta                                | Acceso           | Descripción                                             |
+| ------ | ----------------------------------- | ---------------- | ------------------------------------------------------- |
+| POST   | `/autenticacion/registro`           | Público          | Registra un ciudadano o una fundación.                  |
+| POST   | `/autenticacion/iniciar_sesion`     | Público          | Devuelve `accessToken` y `refreshToken`.                |
+| POST   | `/autenticacion/refrescar_token`    | Público          | Cambia un refresh token por un par nuevo (un solo uso). |
+| POST   | `/autenticacion/cerrar_sesion`      | 🔒 Cualquier rol | Revoca el refresh token de la sesión.                   |
+| PATCH  | `/autenticacion/cambiar_contrasena` | 🔒 Cualquier rol | Cambia la contraseña y cierra todas las sesiones.       |
+| PATCH  | `/autenticacion/usuarios/:id/rol`   | 🔒 administrador | Cambia el rol de un usuario.                            |
 
 ### usuarios
 
-| Método | Ruta                    | Acceso                       | Descripción                    |
-| ------ | ----------------------- | ---------------------------- | ------------------------------ |
-| GET    | `/usuarios/perfil`      | 🔒 Cualquier rol             | Perfil del usuario autenticado. |
-| PATCH  | `/usuarios/perfil`      | 🔒 Cualquier rol             | Actualiza el propio perfil.    |
-| GET    | `/usuarios`             | 🔒 administrador             | Lista los usuarios.            |
-| GET    | `/usuarios/:id`         | 🔒 administrador o el mismo  | Detalle de un usuario.         |
-| PATCH  | `/usuarios/:id/estado`  | 🔒 administrador             | Activa o inactiva un usuario.  |
+| Método | Ruta                   | Acceso                      | Descripción                     |
+| ------ | ---------------------- | --------------------------- | ------------------------------- |
+| GET    | `/usuarios/perfil`     | 🔒 Cualquier rol            | Perfil del usuario autenticado. |
+| PATCH  | `/usuarios/perfil`     | 🔒 Cualquier rol            | Actualiza el propio perfil.     |
+| GET    | `/usuarios`            | 🔒 administrador            | Lista los usuarios, paginado.   |
+| GET    | `/usuarios/:id`        | 🔒 administrador o el mismo | Detalle de un usuario.          |
+| PATCH  | `/usuarios/:id/estado` | 🔒 administrador            | Activa o inactiva un usuario.   |
 
 ### fundaciones
 
-| Método | Ruta                            | Acceso                                  | Descripción                          |
-| ------ | ------------------------------- | --------------------------------------- | ------------------------------------ |
-| GET    | `/fundaciones`                  | Público                                 | Lista las fundaciones verificadas.   |
-| GET    | `/fundaciones/:id`              | Público si está verificada              | Detalle de una fundación.            |
-| PATCH  | `/fundaciones/mi_fundacion`     | 🔒 fundacion                            | Actualiza los datos de la fundación. |
-| PATCH  | `/fundaciones/:id/verificacion` | 🔒 administrador                        | Verifica o retira la verificación.   |
+| Método | Ruta                            | Acceso                     | Descripción                          |
+| ------ | ------------------------------- | -------------------------- | ------------------------------------ |
+| GET    | `/fundaciones`                  | Público                    | Lista las fundaciones verificadas.   |
+| GET    | `/fundaciones/:id`              | Público si está verificada | Detalle de una fundación.            |
+| PATCH  | `/fundaciones/mi_fundacion`     | 🔒 fundacion               | Actualiza los datos de la fundación. |
+| PATCH  | `/fundaciones/:id/verificacion` | 🔒 administrador           | Verifica o retira la verificación.   |
 
 ### mascotas
 
-| Método | Ruta                    | Acceso       | Descripción                                     |
-| ------ | ----------------------- | ------------ | ----------------------------------------------- |
-| GET    | `/mascotas`             | Público      | Lista las mascotas disponibles.                 |
-| GET    | `/mascotas/buscar`      | Público      | Búsqueda con filtros (especie, tamaño, ciudad…). |
-| GET    | `/mascotas/:id`         | Público      | Detalle de una mascota.                         |
-| POST   | `/mascotas`             | 🔒 fundacion | Publica una mascota.                            |
-| PUT    | `/mascotas/:id`         | 🔒 fundacion | Actualiza una mascota propia.                   |
-| PATCH  | `/mascotas/:id/estado`  | 🔒 fundacion | Cambia el estado según las transiciones válidas. |
-| DELETE | `/mascotas/:id`         | 🔒 fundacion | Elimina una mascota propia disponible.          |
+| Método | Ruta                     | Acceso       | Descripción                                      |
+| ------ | ------------------------ | ------------ | ------------------------------------------------ |
+| GET    | `/mascotas`              | Público      | Lista las mascotas disponibles, paginado.        |
+| GET    | `/mascotas/buscar`       | Público      | Búsqueda con filtros (especie, tamaño, ciudad…). |
+| GET    | `/mascotas/mis_mascotas` | 🔒 fundacion | Mascotas propias en cualquier estado.            |
+| GET    | `/mascotas/:id`          | Público      | Detalle de una mascota.                          |
+| POST   | `/mascotas`              | 🔒 fundacion | Publica una mascota (fundación verificada).      |
+| PUT    | `/mascotas/:id`          | 🔒 fundacion | Actualiza una mascota propia.                    |
+| PATCH  | `/mascotas/:id/estado`   | 🔒 fundacion | Cambia el estado según las transiciones válidas. |
+| DELETE | `/mascotas/:id`          | 🔒 fundacion | Elimina una mascota propia que esté disponible.  |
 
-### adopciones (planeado)
+### adopciones
 
-| Método | Ruta                                    | Acceso       | Descripción                                   |
-| ------ | --------------------------------------- | ------------ | --------------------------------------------- |
-| POST   | `/adopciones/solicitudes`               | 🔒 ciudadano | Crea una solicitud de adopción.               |
-| GET    | `/adopciones/solicitudes`               | 🔒 ciudadano / fundacion | Lista las solicitudes propias, con filtro por estado. |
-| GET    | `/adopciones/solicitudes/:id`           | 🔒 participantes | Detalle de una solicitud.                 |
-| PATCH  | `/adopciones/solicitudes/:id/evaluacion`| 🔒 fundacion | Aprueba o rechaza (con motivo).               |
-| PATCH  | `/adopciones/solicitudes/:id/entrega`   | 🔒 fundacion | Confirma la entrega de la mascota.            |
-| PATCH  | `/adopciones/solicitudes/:id/cancelacion` | 🔒 ciudadano / fundacion | Cancela una solicitud activa.     |
+Estados de una solicitud: `pendiente` → `aprobada` → `completada`, o
+`rechazada` / `cancelada`. Cada cambio queda en el historial y, cuando
+corresponde, cambia el estado de la mascota en la misma transacción.
 
-### archivos (planeado)
+| Método | Ruta                                | Acceso                                | Descripción                                                                                  |
+| ------ | ----------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------- |
+| POST   | `/adopciones`                       | 🔒 ciudadano                          | Crea una solicitud. 409 si la mascota no está disponible o ya hay una activa del ciudadano. |
+| GET    | `/adopciones/mis_solicitudes`       | 🔒 ciudadano                          | Solicitudes propias (`?estado=&pagina=&limite=`).                                            |
+| GET    | `/adopciones/recibidas`             | 🔒 fundacion                          | Solicitudes de sus mascotas; del adoptante solo id, nombre y email.                         |
+| GET    | `/adopciones/:id`                   | 🔒 adoptante, fundación dueña o admin | Detalle. 404 para cualquier otro usuario.                                                    |
+| GET    | `/adopciones/:id/historial`         | 🔒 adoptante, fundación dueña o admin | Cambios de estado ordenados por fecha.                                                       |
+| PATCH  | `/adopciones/:id/evaluacion`        | 🔒 fundación dueña                    | Aprueba (mascota → en proceso, rechaza las demás pendientes) o rechaza con motivo.          |
+| PATCH  | `/adopciones/:id/confirmar_entrega` | 🔒 fundación dueña                    | Solo desde `aprobada`: solicitud → completada, mascota → adoptada.                          |
+| DELETE | `/adopciones/:id`                   | 🔒 ciudadano adoptante                | Cancela (no borra). Si estaba aprobada, la mascota vuelve a disponible.                     |
 
-| Método | Ruta                         | Acceso                  | Descripción                                      |
-| ------ | ---------------------------- | ----------------------- | ------------------------------------------------ |
-| POST   | `/archivos`                  | 🔒 Cualquier rol        | Sube una imagen (máx. 5 MB) o un PDF (máx. 10 MB). |
-| GET    | `/archivos/:id/url_firmada`  | 🔒 Dueño o autorizado   | Genera una URL temporal firmada.                 |
-| GET    | `/archivos/:id`              | Con firma válida        | Descarga el archivo (`?expira=…&firma=…`).       |
-| DELETE | `/archivos/:id`              | 🔒 Dueño                | Elimina el archivo.                              |
+### archivos
+
+Imágenes PNG, JPEG o WebP de hasta 5 MB (máximo 5 por petición) y documentos PDF
+de hasta 10 MB. El tipo se comprueba por el contenido, no por la extensión. Las
+descargas usan URLs firmadas que vencen en `URL_FIRMADA_EXPIRA_SEGUNDOS`.
+
+| Método | Ruta                           | Acceso                                | Descripción                                                                       |
+| ------ | ------------------------------ | ------------------------------------- | --------------------------------------------------------------------------------- |
+| POST   | `/archivos/imagenes`           | 🔒 fundación dueña de la mascota      | Sube fotos de una mascota (`multipart/form-data`: `mascotaId`, `imagenes`).       |
+| POST   | `/archivos/documentos`         | 🔒 Cualquier rol                      | Sube un PDF (`documento`).                                                        |
+| GET    | `/archivos/mascota/:mascotaId` | Público si la mascota está disponible | Imágenes de una mascota con su URL firmada.                                       |
+| GET    | `/archivos/:id/url_firmada`    | 🔒 Dueño o administrador              | Genera una URL de descarga nueva.                                                 |
+| GET    | `/archivos/descargar/:id`      | Con firma válida                      | Descarga el archivo (`?expira=…&firma=…`). 403 si la firma no es válida o venció. |
+| DELETE | `/archivos/:id`                | 🔒 Dueño o administrador              | Elimina el archivo.                                                               |
+
+Al eliminar una mascota, `MascotasService` emite el evento `mascota.eliminada` y
+el módulo de archivos borra sus imágenes del disco y de la base. Si un archivo
+físico no se puede borrar, queda registrado en el log y la limpieza continúa.
+
+### salud
+
+| Método | Ruta      | Acceso  | Descripción                                                                                       |
+| ------ | --------- | ------- | ------------------------------------------------------------------------------------------------- |
+| GET    | `/salud`  | Público | Estado de la API y de la conexión a PostgreSQL. 200 si todo responde, 503 si no. Sin límite de peticiones. |
+
+Ejemplo de respuesta:
+
+```json
+{ "status": "ok", "info": { "baseDeDatos": { "status": "up" } }, "error": {}, "details": { "baseDeDatos": { "status": "up" } } }
+```
+
+## Tareas programadas
+
+- **Limpieza de tokens de refresco:** todos los días a las 3:00 se borran de
+  `tokens_refresco` los tokens vencidos o revocados hace más de 7 días. Mientras
+  tanto se conservan para detectar si alguien reutiliza un token revocado.
+- Las tareas no corren con `NODE_ENV=test`, así que no interfieren con las pruebas e2e.
 
 ## Convenciones
 
