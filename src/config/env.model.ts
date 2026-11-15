@@ -25,4 +25,9 @@ export interface VariablesEntorno {
 
   ADMIN_EMAIL?: string;
   ADMIN_PASSWORD?: string;
+
+  // Almacenamiento (módulo archivos).
+  ALMACENAMIENTO_DIR: string;
+  URL_FIRMADA_SECRETO: string;
+  URL_FIRMADA_EXPIRA_SEGUNDOS: number;
 }
