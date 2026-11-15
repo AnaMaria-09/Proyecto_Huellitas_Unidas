@@ -1,10 +1,7 @@
 import { jest } from '@jest/globals';
 import { Test } from '@nestjs/testing';
 import { HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
-import type {
-  HealthCheckResult,
-  HealthIndicatorFunction,
-} from '@nestjs/terminus';
+import type { HealthCheckResult } from '@nestjs/terminus';
 import { SaludController } from './salud.controller';
 
 describe('SaludController', () => {
