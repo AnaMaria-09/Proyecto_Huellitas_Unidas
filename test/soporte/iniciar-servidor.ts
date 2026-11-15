@@ -66,7 +66,7 @@ export default async function iniciarServidor(): Promise<void> {
   globalThis.servidorE2e = servidor;
 
   await esperarServidor(
-    `http://localhost:${process.env.PORT}/api/v1/mascotas`,
+    `http://localhost:${process.env.PORT}/api/v1/salud`,
     servidor,
     salida,
   );
