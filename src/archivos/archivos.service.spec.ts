@@ -10,7 +10,7 @@ import type { EstadoMascota } from '../mascotas/mascota.model';
 import { MascotasService } from '../mascotas/mascotas.service';
 import { PROVEEDOR_ALMACENAMIENTO } from './almacenamiento/tokens';
 import { ArchivosService } from './archivos.service';
-import type { ArchivoSubido } from './archivos.service';
+import type { ArchivoConUrl, ArchivoSubido } from './archivos.service';
 import { Archivo } from './entities/archivo.entity';
 import { AlmacenamientoFake } from './testing/almacenamiento.fake';
 import { OPCIONES_URL_FIRMADA } from './url-firmada/opciones-url-firmada';
@@ -88,7 +88,7 @@ describe('ArchivosService', () => {
     servicio = modulo.get(ArchivosService);
   });
 
-  async function subirUna(): Promise<Archivo> {
+  async function subirUna(): Promise<ArchivoConUrl> {
     const [archivo] = await servicio.subirImagenes(FUNDACION, MASCOTA_ID, [png()]);
     return archivo;
   }
