@@ -10,6 +10,7 @@ import { OPCIONES_ALMACENAMIENTO, PROVEEDOR_ALMACENAMIENTO } from './almacenamie
 import { ArchivosController } from './archivos.controller';
 import { ArchivosService } from './archivos.service';
 import { Archivo } from './entities/archivo.entity';
+import { MascotaEliminadaListener } from './listeners/mascota-eliminada.listener';
 import type { OpcionesUrlFirmada } from './url-firmada/opciones-url-firmada';
 import { OPCIONES_URL_FIRMADA } from './url-firmada/opciones-url-firmada';
 import { UrlFirmadaService } from './url-firmada/url-firmada.service';
@@ -41,6 +42,7 @@ import { ValidadorArchivos } from './validacion/validador-archivos';
       }),
     },
     UrlFirmadaService,
+    MascotaEliminadaListener,
   ],
   exports: [ArchivosService, PROVEEDOR_ALMACENAMIENTO, ValidadorArchivos, UrlFirmadaService],
 })

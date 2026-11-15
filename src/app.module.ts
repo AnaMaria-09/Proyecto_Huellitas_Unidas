@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { createObserveModule } from '@nestjs/observe';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
@@ -22,6 +23,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   imports: [
     ConfigModule.forRoot(opcionesConfiguracion),
     DatabaseModule,
+    // Eventos entre módulos sin depender unos de otros (p. ej. mascota.eliminada → archivos).
+    EventEmitterModule.forRoot(),
     // Límites por IP y por minuto: uno global y otro, más bajo, solo para las rutas con
     // @LimiteAutenticacion (registro e inicio de sesión). Los valores vienen de .env.
     ThrottlerModule.forRootAsync({
