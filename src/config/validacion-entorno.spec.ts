@@ -52,3 +52,19 @@ describe('esquemaEntorno: almacenamiento', () => {
     );
   });
 });
+
+describe('esquemaEntorno: límites de peticiones', () => {
+  it('usa 100 por minuto global y 5 para autenticación por defecto', () => {
+    expect(validar().value).toMatchObject({ LIMITE_PETICIONES_POR_MINUTO: 100, LIMITE_AUTENTICACION_POR_MINUTO: 5 });
+  });
+
+  it('acepta límites más altos, como en las pruebas e2e', () => {
+    expect(
+      validar({ LIMITE_PETICIONES_POR_MINUTO: '10000', LIMITE_AUTENTICACION_POR_MINUTO: '10000' }).value,
+    ).toMatchObject({ LIMITE_PETICIONES_POR_MINUTO: 10000, LIMITE_AUTENTICACION_POR_MINUTO: 10000 });
+  });
+
+  it.each(['0', '-5', '2.5', 'muchos'])('rechaza LIMITE_AUTENTICACION_POR_MINUTO=%s', (valor) => {
+    expect(validar({ LIMITE_AUTENTICACION_POR_MINUTO: valor }).error).toBeDefined();
+  });
+});

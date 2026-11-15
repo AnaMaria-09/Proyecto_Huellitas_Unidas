@@ -30,4 +30,8 @@ export interface VariablesEntorno {
   ALMACENAMIENTO_DIR: string;
   URL_FIRMADA_SECRETO: string;
   URL_FIRMADA_EXPIRA_SEGUNDOS: number;
+
+  // Límites de peticiones por minuto e IP: global y para registro e inicio de sesión.
+  LIMITE_PETICIONES_POR_MINUTO: number;
+  LIMITE_AUTENTICACION_POR_MINUTO: number;
 }

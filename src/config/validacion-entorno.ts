@@ -29,6 +29,10 @@ export const esquemaEntorno = Joi.object<VariablesEntorno, true>({
   ALMACENAMIENTO_DIR: Joi.string().default('uploads'),
   URL_FIRMADA_SECRETO: Joi.string().min(32).required(),
   URL_FIRMADA_EXPIRA_SEGUNDOS: Joi.number().integer().positive().default(300),
+
+  // Límites de peticiones por minuto e IP. Las pruebas e2e los suben en .env.test.
+  LIMITE_PETICIONES_POR_MINUTO: Joi.number().integer().positive().default(100),
+  LIMITE_AUTENTICACION_POR_MINUTO: Joi.number().integer().positive().default(5),
 })
   .and('ADMIN_EMAIL', 'ADMIN_PASSWORD')
   .prefs({
