@@ -11,9 +11,9 @@ import type { VariablesEntorno } from './config/env.model';
 import { DatabaseModule } from './database/database.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { FundacionesModule } from './fundaciones/fundaciones.module';
-import { AdopcionesController } from './adopciones/adopciones.controller';
 import { MascotasModule } from './mascotas/mascotas.module';
 import { ArchivosModule } from './archivos/archivos.module';
+import { AdopcionesModule } from './adopciones/adopciones.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -45,8 +45,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     UsuariosModule,
     FundacionesModule,
     ArchivosModule,
+    AdopcionesModule,
   ],
-  controllers: [AppController, AdopcionesController],
+  controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
