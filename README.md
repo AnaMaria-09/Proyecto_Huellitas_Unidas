@@ -55,9 +55,14 @@ docker compose up -d --build postgres api
 ```
 
 Al arrancar, el contenedor aplica las migraciones pendientes y corre la API en
-modo producción (sin `synchronize`), aunque `.env` diga `development`. La API queda en `http://localhost:3000/api/v1` y Swagger en
+modo producción (sin `synchronize`), aunque `.env` diga `development`. La API
+queda en `http://localhost:3000/api/v1` y Swagger en
 `http://localhost:3000/api/docs`. Los archivos subidos se guardan en el volumen
 `archivos_datos`.
+
+El servicio `api` tiene un healthcheck que consulta `GET /api/v1/salud` con el
+`fetch` de Node (la imagen no trae curl). `docker compose ps` muestra `healthy`
+cuando la API y la base de datos responden.
 
 ### En local (PostgreSQL en Docker)
 
@@ -249,6 +254,29 @@ descargas usan URLs firmadas que vencen en `URL_FIRMADA_EXPIRA_SEGUNDOS`.
 | GET    | `/archivos/:id/url_firmada`    | 🔒 Dueño o administrador              | Genera una URL de descarga nueva.                                                 |
 | GET    | `/archivos/descargar/:id`      | Con firma válida                      | Descarga el archivo (`?expira=…&firma=…`). 403 si la firma no es válida o venció. |
 | DELETE | `/archivos/:id`                | 🔒 Dueño o administrador              | Elimina el archivo.                                                               |
+
+Al eliminar una mascota, `MascotasService` emite el evento `mascota.eliminada` y
+el módulo de archivos borra sus imágenes del disco y de la base. Si un archivo
+físico no se puede borrar, queda registrado en el log y la limpieza continúa.
+
+### salud
+
+| Método | Ruta      | Acceso  | Descripción                                                                                       |
+| ------ | --------- | ------- | ------------------------------------------------------------------------------------------------- |
+| GET    | `/salud`  | Público | Estado de la API y de la conexión a PostgreSQL. 200 si todo responde, 503 si no. Sin límite de peticiones. |
+
+Ejemplo de respuesta:
+
+```json
+{ "status": "ok", "info": { "baseDeDatos": { "status": "up" } }, "error": {}, "details": { "baseDeDatos": { "status": "up" } } }
+```
+
+## Tareas programadas
+
+- **Limpieza de tokens de refresco:** todos los días a las 3:00 se borran de
+  `tokens_refresco` los tokens vencidos o revocados hace más de 7 días. Mientras
+  tanto se conservan para detectar si alguien reutiliza un token revocado.
+- Las tareas no corren con `NODE_ENV=test`, así que no interfieren con las pruebas e2e.
 
 ## Convenciones
 
