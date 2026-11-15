@@ -39,7 +39,9 @@ export class Archivo {
   @Column({ name: 'mascota_id', type: 'int', nullable: true })
   mascotaId: number | null;
 
-  @ManyToOne(() => Mascota, { nullable: true, onDelete: 'CASCADE' })
+  // Sin clave foránea a propósito: al borrar la mascota, el listener de 'mascota.eliminada'
+  // necesita leer estas filas para borrar los archivos físicos, y después borra las filas.
+  @ManyToOne(() => Mascota, { nullable: true, createForeignKeyConstraints: false })
   @JoinColumn({ name: 'mascota_id' })
   mascota?: Mascota | null;
 
