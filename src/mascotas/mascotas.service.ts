@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
@@ -23,6 +24,7 @@ import { ActualizarMascotaDto } from './dto/actualizar-mascota.dto';
 import { BuscarMascotasDto } from './dto/buscar-mascotas.dto';
 import { CreateMascotaDto } from './dto/create-mascota.dto';
 import { Mascota } from './entities/mascota.entity';
+import { MASCOTA_ELIMINADA, MascotaEliminadaEvento } from './eventos/mascota-eliminada.evento';
 import type { EstadoMascota } from './mascota.model';
 
 // Estados a los que puede pasar una mascota desde cada estado actual.
@@ -39,6 +41,7 @@ export class MascotasService {
   constructor(
     @InjectRepository(Mascota) private readonly mascotas: Repository<Mascota>,
     private readonly usuariosRepositorio: UsuariosRepositorio,
+    private readonly eventos: EventEmitter2,
   ) {}
 
   async crear(fundacionId: number, datos: CreateMascotaDto): Promise<Mascota> {
@@ -127,6 +130,8 @@ export class MascotasService {
       );
     }
     await this.mascotas.remove(mascota);
+    // emitAsync espera a los listeners; ellos registran sus propios errores y no los propagan.
+    await this.eventos.emitAsync(MASCOTA_ELIMINADA, new MascotaEliminadaEvento(id));
   }
 
   private async listar(where: FindOptionsWhere<Mascota>, paginacion: PaginacionDto): Promise<Paginado<Mascota>> {
