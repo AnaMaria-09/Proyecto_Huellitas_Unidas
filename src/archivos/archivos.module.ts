@@ -1,9 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AutenticacionModule } from '../autenticacion/autenticacion.module';
 import type { VariablesEntorno } from '../config/env.model';
+import { MascotasModule } from '../mascotas/mascotas.module';
 import { AlmacenamientoLocal } from './almacenamiento/almacenamiento-local';
 import type { OpcionesAlmacenamiento } from './almacenamiento/opciones-almacenamiento.interface';
 import { OPCIONES_ALMACENAMIENTO, PROVEEDOR_ALMACENAMIENTO } from './almacenamiento/tokens';
+import { ArchivosController } from './archivos.controller';
+import { ArchivosService } from './archivos.service';
+import { Archivo } from './entities/archivo.entity';
 import type { OpcionesUrlFirmada } from './url-firmada/opciones-url-firmada';
 import { OPCIONES_URL_FIRMADA } from './url-firmada/opciones-url-firmada';
 import { UrlFirmadaService } from './url-firmada/url-firmada.service';
@@ -11,7 +17,11 @@ import { REGLAS_ARCHIVOS, REGLAS_VALIDACION_ARCHIVOS } from './validacion/reglas
 import { ValidadorArchivos } from './validacion/validador-archivos';
 
 @Module({
+  // AutenticacionModule aporta los guards; MascotasModule, MascotasService para validar dueño y estado.
+  imports: [TypeOrmModule.forFeature([Archivo]), AutenticacionModule, MascotasModule],
+  controllers: [ArchivosController],
   providers: [
+    ArchivosService,
     {
       provide: OPCIONES_ALMACENAMIENTO,
       inject: [ConfigService],
@@ -32,6 +42,6 @@ import { ValidadorArchivos } from './validacion/validador-archivos';
     },
     UrlFirmadaService,
   ],
-  exports: [PROVEEDOR_ALMACENAMIENTO, ValidadorArchivos, UrlFirmadaService],
+  exports: [ArchivosService, PROVEEDOR_ALMACENAMIENTO, ValidadorArchivos, UrlFirmadaService],
 })
 export class ArchivosModule {}
