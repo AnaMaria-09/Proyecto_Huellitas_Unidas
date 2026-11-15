@@ -177,6 +177,49 @@ describe('Validación (e2e)', () => {
     expect(respuesta.body.message[0]).toMatch(/^El estado debe ser uno de:/);
   });
 
+  it('paginación y búsqueda de mascotas fuera de rango', async () => {
+    const respuesta = await api()
+      .get(
+        `${API}/mascotas/buscar?pagina=0&limite=101&especie=dragon&edadMinMeses=-2`,
+      )
+      .expect(400);
+
+    expect(respuesta.body.message).toEqual(
+      expect.arrayContaining([
+        'pagina debe ser mayor o igual a 1',
+        'limite no puede ser mayor que 100',
+        'La especie debe ser una de: perro, gato, otro',
+        'edadMinMeses no puede ser negativa',
+      ]),
+    );
+  });
+
+  it('cambiar el estado de una mascota a uno desconocido', async () => {
+    const respuesta = await api()
+      .patch(`${API}/mascotas/${mascotaId}/estado`)
+      .set(...autorizacion(fundacion))
+      .send({ estado: 'perdida' })
+      .expect(400);
+
+    expect(respuesta.body.message).toContain(
+      'El estado debe ser uno de: disponible, en_proceso, adoptada',
+    );
+  });
+
+  it('refrescar sin refresh token', async () => {
+    const respuesta = await api()
+      .post(`${API}/autenticacion/refrescar_token`)
+      .send({})
+      .expect(400);
+
+    expect(respuesta.body.message).toEqual(
+      expect.arrayContaining([
+        'El refresh token debe ser un texto',
+        'El refresh token es obligatorio',
+      ]),
+    );
+  });
+
   it('archivos: subir imágenes sin archivos', async () => {
     const respuesta = await api()
       .post(`${API}/archivos/imagenes`)
