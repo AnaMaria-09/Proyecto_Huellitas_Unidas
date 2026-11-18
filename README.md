@@ -176,6 +176,37 @@ PostgreSQL 16 corre como servicio.
 Con la API corriendo: `http://localhost:3000/api/docs`. Para probar rutas
 protegidas, inicia sesión, copia el `accessToken` y pégalo en **Authorize**.
 
+## Demostración con Postman
+
+En [`docs/postman/`](docs/postman) está la colección
+`huellitas-unidas.postman_collection.json`, con 50 peticiones en 7 carpetas que
+recorren toda la API en orden:
+
+0. Salud
+1. Autenticación: registro, inicio de sesión y refresh token, incluida la reutilización (401).
+2. Usuarios y fundaciones: perfil y verificación por el administrador.
+3. Mascotas: GET, POST, PUT y búsqueda con filtros.
+4. Archivos: subida de foto y descarga con URL firmada.
+5. Adopciones: solicitud, rechazo automático de la otra solicitud, aprobación, entrega, historial y cancelación.
+6. Errores y validaciones: 400, 401, 403, 404 y 409.
+
+Cada petición comprueba el código de respuesta y guarda los ids y tokens que
+usan las siguientes, así que no hay que copiar nada a mano.
+
+1. Levanta la API (`docker compose up -d --build postgres api` o `npm run start:dev`).
+2. En Postman, **Import** → los dos archivos de `docs/postman/` (colección y entorno).
+3. Elige el entorno **Huellitas Unidas (local)** y escribe en `adminEmail` y
+   `adminPassword` los valores de `ADMIN_EMAIL` y `ADMIN_PASSWORD` de tu `.env`.
+4. Ejecuta las carpetas en orden, o la colección completa con **Run collection**.
+
+Notas:
+
+- Cada ejecución crea usuarios nuevos (el email lleva un sufijo con la hora).
+  Registro e inicio de sesión aceptan 5 intentos por minuto e IP: entre dos
+  ejecuciones completas espera un minuto.
+- En **Subir foto de la mascota**, si el archivo aparece en rojo, selecciona
+  `docs/postman/luna.png` (o cualquier PNG, JPEG o WebP) en el campo `imagenes`.
+
 ## Resumen de endpoints
 
 Todas las rutas usan el prefijo `/api/v1`. 🔒 = requiere `Authorization: Bearer <accessToken>`.
